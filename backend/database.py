@@ -77,6 +77,10 @@ class ReconciliationCase(Base):
     source_record_id = Column(String, nullable=True)
     sync_id = Column(String, index=True, nullable=True)
     created_at = Column(String)
+    resolved_by = Column(String, nullable=True)
+    resolution_action = Column(String, nullable=True)
+    resolution_notes = Column(String, nullable=True)
+    resolved_at = Column(String, nullable=True)
 
 
 class SyncRecord(Base):
@@ -144,6 +148,10 @@ def _ensure_sqlite_columns():
                 ("source", "TEXT DEFAULT 'synthetic'"),
                 ("source_record_id", "TEXT"),
                 ("sync_id", "TEXT"),
+                ("resolved_by", "TEXT"),
+                ("resolution_action", "TEXT"),
+                ("resolution_notes", "TEXT"),
+                ("resolved_at", "TEXT"),
             ]
         }
         for table, cols in tables_to_check.items():

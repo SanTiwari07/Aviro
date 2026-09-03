@@ -1,11 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import EvidenceDrawer from '../components/EvidenceDrawer';
-import { api, formatINR } from '../api';
+import { api, formatINR, formatNumber, formatDate } from '../api';
+import {
+  Search,
+  Filter,
+  CheckCircle2,
+  AlertTriangle,
+  AlertOctagon,
+  ArrowRight,
+  RefreshCw,
+  Cpu,
+  Layers,
+  ShieldAlert,
+} from 'lucide-react';
 
-export default function Reconciliation() {
+interface ReconciliationProps {
+  onOpenCase: (caseId: string) => void;
+  currentSource: string;
+}
+
+export default function Reconciliation({
+  onOpenCase,
+  currentSource,
+}: ReconciliationProps) {
   const [cases, setCases] = useState<any[]>([]);
-  const [selectedCase, setSelectedCase] = useState<any | null>(null);
-  const [sourceFilter, setSourceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -15,10 +32,10 @@ export default function Reconciliation() {
     setLoading(true);
     setError(null);
     api.getReconciliation({
-      source: sourceFilter,
-      status: statusFilter,
+      source: currentSource === 'all' ? undefined : currentSource,
+      status: statusFilter === 'all' ? undefined : statusFilter,
       search: search.trim() || undefined,
-      limit: 100,
+      limit: 150,
     })
       .then((data) => setCases(data || []))
       .catch((e) => setError(e.message))
@@ -27,7 +44,7 @@ export default function Reconciliation() {
 
   useEffect(() => {
     loadCases();
-  }, [sourceFilter, statusFilter]);
+  }, [currentSource, statusFilter]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,181 +53,193 @@ export default function Reconciliation() {
 
   return (
     <div className="space-y-6">
-      {/* Header & Filter Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Reconciliation Records</h2>
-          <p className="text-sm text-slate-500">
-            Ledger of matched, reviewed, and exception cases with full evidentiary provenance.
+          <h2 className="text-xl font-bold text-tprimary tracking-tight">Reconciliation Ledger</h2>
+          <p className="text-xs text-tmuted mt-0.5">
+            Full transactional audit trail: Deterministic exact ID matches, AI investigations, and Control Gate invariants.
           </p>
         </div>
 
-        {/* Filter Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <form onSubmit={handleSearchSubmit} className="flex items-center">
+        <button
+          onClick={loadCases}
+          disabled={loading}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Ledger</span>
+        </button>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+        {/* Status Filter Tabs */}
+        <div className="flex items-center gap-1 bg-navy-900 p-1 rounded-lg border border-navy-700/80">
+          {['all', 'MATCHED', 'REVIEW', 'EXCEPTION'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`px-3 py-1 rounded text-xs font-mono font-medium transition-colors ${
+                statusFilter === st
+                  ? 'bg-navy-750 text-tprimary shadow-sm border border-navy-600'
+                  : 'text-tmuted hover:text-tsecondary'
+              }`}
+            >
+              {st === 'all' ? 'ALL STATUS' : st}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 text-tmuted absolute left-2.5 top-2.5" />
             <input
               type="text"
-              placeholder="Search ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="text-xs border border-slate-300 rounded-l px-2.5 py-1.5 bg-white text-slate-700 w-36 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Search Case, Payment or Settlement ID..."
+              className="w-full bg-navy-900 border border-navy-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-tprimary placeholder-tmuted focus:outline-none focus:border-brand-blue font-mono"
             />
-            <button
-              type="submit"
-              className="text-xs bg-slate-100 hover:bg-slate-200 border-t border-b border-r border-slate-300 text-slate-700 rounded-r px-2.5 py-1.5"
-            >
-              🔍
-            </button>
-          </form>
-
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 shadow-sm"
-          >
-            <option value="all">All Sources</option>
-            <option value="synthetic">Synthetic Benchmark</option>
-            <option value="razorpay_test">Razorpay Test Mode</option>
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 shadow-sm"
-          >
-            <option value="all">All Statuses</option>
-            <option value="MATCHED">MATCHED</option>
-            <option value="REVIEW">REVIEW</option>
-            <option value="EXCEPTION">EXCEPTION</option>
-          </select>
-
+          </div>
           <button
-            onClick={loadCases}
-            className="px-3 py-1.5 text-xs font-semibold rounded bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm"
+            type="submit"
+            className="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-medium text-tsecondary"
           >
-            Refresh
+            Search
           </button>
-        </div>
+        </form>
       </div>
 
-      {/* Table Card */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-800 flex justify-between items-center">
-          <span>Reconciliation Ledger ({cases.length} records shown)</span>
-          <span className="text-xs text-slate-500 font-normal">Click any row to open the full Evidence Drawer</span>
+      {/* Error Banner */}
+      {error && (
+        <div className="p-4 rounded-xl bg-status-exception/15 border border-status-exception/30 text-xs text-status-exception">
+          {error}
         </div>
-
-        {loading && <p className="p-8 text-center text-slate-400 text-sm animate-pulse">Loading cases…</p>}
-        {error && <p className="p-8 text-center text-rose-600 text-sm">Error: {error}</p>}
-
-        {!loading && cases.length === 0 && !error && (
-          <div className="p-12 text-center text-slate-500">
-            <p className="font-bold text-base mb-1">No cases match your filters.</p>
-            <p className="text-xs text-slate-400">Run reconciliation from the Overview page or clear filters.</p>
-          </div>
-        )}
-
-        {cases.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold">
-                <tr>
-                  <th className="p-3">Case ID</th>
-                  <th className="p-3">Source</th>
-                  <th className="p-3">Payment ID</th>
-                  <th className="p-3">Settlement ID</th>
-                  <th className="p-3">Method</th>
-                  <th className="p-3 text-right">Amount</th>
-                  <th className="p-3">AI Recommendation</th>
-                  <th className="p-3">Control Gate</th>
-                  <th className="p-3">Final Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {cases.map((c) => (
-                  <tr
-                    key={c.case_id}
-                    className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
-                    onClick={() => setSelectedCase(c)}
-                  >
-                    <td className="p-3 font-mono font-bold text-slate-900">{c.case_id}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          c.source === 'razorpay_test'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        {c.source === 'razorpay_test' ? '⚡ Razorpay' : '🔬 Synthetic'}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono">{c.payment_id || '—'}</td>
-                    <td className="p-3 font-mono">{c.settlement_id || '—'}</td>
-                    <td className="p-3">{c.match_method || '—'}</td>
-                    <td className="p-3 text-right font-mono font-medium text-slate-900">
-                      {formatINR(c.financial_impact)}
-                    </td>
-                    <td className="p-3">
-                      {c.ai_recommendation ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px]">
-                          <span
-                            className={`font-semibold ${
-                              c.ai_recommendation === 'MATCHED'
-                                ? 'text-emerald-700'
-                                : c.ai_recommendation === 'REVIEW'
-                                ? 'text-amber-700'
-                                : 'text-rose-700'
-                            }`}
-                          >
-                            {c.ai_recommendation}
-                          </span>
-                          <span className="text-slate-400">
-                            ({((c.ai_confidence || 0) * 100).toFixed(0)}%)
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">Deterministic (Rule)</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          c.control_result === 'PASS'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {c.control_result || 'PASS'}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          c.status === 'MATCHED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : c.status === 'REVIEW'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-rose-100 text-rose-800'
-                        }`}
-                      >
-                        {c.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {selectedCase && (
-        <EvidenceDrawer
-          caseData={selectedCase}
-          onClose={() => setSelectedCase(null)}
-        />
       )}
+
+      {/* Ledger Table */}
+      <div className="rounded-xl bg-navy-850 border border-navy-700/80 shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead>
+              <tr className="border-b border-navy-700 bg-navy-900/80 text-tmuted text-[10px] uppercase">
+                <th className="py-3 px-4">Case ID</th>
+                <th className="py-3 px-4">Payment ID</th>
+                <th className="py-3 px-4">Settlement ID</th>
+                <th className="py-3 px-4 text-right">Gross Amount</th>
+                <th className="py-3 px-4">Method</th>
+                <th className="py-3 px-4">AI Investigation</th>
+                <th className="py-3 px-4">Control Gate</th>
+                <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 text-right">Audit</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-navy-700/50">
+              {loading && cases.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                    Loading reconciliation records from authoritative database...
+                  </td>
+                </tr>
+              ) : cases.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                    No matching records located for selected filters.
+                  </td>
+                </tr>
+              ) : (
+                cases.map((c) => {
+                  const isFlagship = c.case_id === 'CASE_PAY_FLAGSHIP_001';
+                  return (
+                    <tr
+                      key={c.case_id}
+                      onClick={() => onOpenCase(c.case_id)}
+                      className={`hover:bg-navy-800/80 cursor-pointer transition-colors group ${
+                        isFlagship ? 'bg-status-review/5' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-bold text-tprimary group-hover:text-brand-blue">
+                        <div className="flex items-center gap-1.5">
+                          {c.case_id}
+                          {isFlagship && (
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-status-review/20 text-status-review border border-status-review/30 font-bold">
+                              FLAGSHIP
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-tsecondary">
+                        {c.payment_id || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-tmuted">
+                        {c.settlement_id || 'Unallocated'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-tprimary tabular-nums">
+                        {formatINR(c.financial_impact)}
+                      </td>
+                      <td className="py-3 px-4 text-tsecondary">
+                        <span className="text-[11px] px-2 py-0.5 rounded bg-navy-900 border border-navy-700">
+                          {c.match_method || 'PENDING'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-tsecondary">
+                        {c.ai_recommendation ? (
+                          <div className="flex items-center gap-1.5">
+                            <Cpu className="w-3.5 h-3.5 text-brand-blue" />
+                            <span className="text-brand-blue font-semibold">
+                              {c.ai_recommendation} ({c.ai_confidence ? `${(c.ai_confidence * 100).toFixed(0)}%` : '—'})
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-tmuted text-[11px]">Deterministic</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`text-[10px] uppercase font-bold ${
+                            c.control_result === 'BLOCK'
+                              ? 'text-status-exception flex items-center gap-1'
+                              : 'text-status-matched'
+                          }`}
+                        >
+                          {c.control_result === 'BLOCK' && <ShieldAlert className="w-3 h-3" />}
+                          {c.control_result || 'PASS'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`text-[10px] uppercase px-2 py-0.5 rounded-full font-bold border ${
+                            c.status === 'MATCHED'
+                              ? 'bg-status-matched/15 text-status-matched border-status-matched/30'
+                              : c.status === 'REVIEW'
+                              ? 'bg-status-review/15 text-status-review border-status-review/30'
+                              : 'bg-status-exception/15 text-status-exception border-status-exception/30'
+                          }`}
+                        >
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-[11px] text-brand-blue group-hover:underline flex items-center justify-end gap-1">
+                          Inspect <ArrowRight className="w-3 h-3" />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer info */}
+        <div className="px-4 py-3 border-t border-navy-700 bg-navy-900/60 flex items-center justify-between text-xs font-mono text-tmuted">
+          <span>Showing up to {formatNumber(cases.length)} records</span>
+          <span>Workspace: {currentSource.toUpperCase()}</span>
+        </div>
+      </div>
     </div>
   );
 }

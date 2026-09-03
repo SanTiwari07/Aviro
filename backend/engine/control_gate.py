@@ -59,6 +59,9 @@ def decide_final_status(candidate: Dict[str, Any], control_result: Dict[str, Any
         ai_rec = candidate.get("ai_recommendation")
         if ai_rec == "EXCEPTION":
             return "EXCEPTION"
+        # Policy: unexplained delta between expected and actual settlement, or missing records, must become EXCEPTION
+        if candidate.get("unexplained_delta") or candidate.get("match_method") in ("WATERFALL_ANOMALY", "NO_MATCH"):
+            return "EXCEPTION"
         return "REVIEW"
 
     # Control passes — check deterministic match method first

@@ -1,122 +1,193 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
+import CommandPalette from './components/CommandPalette';
+import EvidenceDrawer from './components/EvidenceDrawer';
+import ReconciliationModal from './components/ReconciliationModal';
+
 import Overview from './pages/Overview';
 import Reconciliation from './pages/Reconciliation';
 import Exceptions from './pages/Exceptions';
 import Settlements from './pages/Settlements';
-import Ask from './pages/Ask';
+import CashPosition from './pages/CashPosition';
 import Runs from './pages/Runs';
+import Audit from './pages/Audit';
+import Ask from './pages/Ask';
 import Benchmark from './pages/Benchmark';
 
-function App() {
-  const navClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-      isActive
-        ? 'bg-indigo-600 text-white shadow-sm'
-        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-    }`;
+import { Play, Search, ShieldCheck } from 'lucide-react';
+import { api } from './api';
+
+export default function App() {
+  const [currentSource, setCurrentSource] = useState<string>('synthetic');
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
+
+  // Global keyboard shortcuts (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleOpenCase = (caseId: string) => {
+    setSelectedCaseId(caseId);
+  };
+
+  const handleCloseDrawer = () => {
+    setSelectedCaseId(null);
+  };
+
+  const handleSyncRazorpayDirect = async () => {
+    try {
+      await api.syncRazorpay();
+      alert('Razorpay snapshot refreshed.');
+    } catch (err: any) {
+      alert(`Razorpay Sync note: ${err.message}`);
+    }
+  };
 
   return (
     <Router>
-      <div className="flex h-screen w-full bg-slate-100 overflow-hidden text-slate-800">
-        {/* Sidebar */}
-        <aside className="w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0">
-          <div className="p-5 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-base shadow-sm">
-                A
-              </span>
-              <div>
-                <h1 className="text-lg font-bold tracking-tight text-white leading-tight">ARIVO</h1>
-                <p className="text-[10px] text-indigo-300 font-medium">AI Finance Controller</p>
+      <div className="flex h-screen w-full bg-navy-950 text-tprimary overflow-hidden font-sans antialiased">
+        {/* Institutional Left Sidebar */}
+        <Sidebar
+          currentSource={currentSource}
+          onSourceChange={setCurrentSource}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        />
+
+        {/* Main Application Area */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {/* Institutional Top Header */}
+          <header className="h-14 border-b border-navy-700/80 bg-navy-900/60 px-6 flex items-center justify-between shrink-0 select-none">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-tsecondary">ARIVO Controller</span>
+              <span className="text-navy-600">•</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-tmuted">Workspace:</span>
+                <span className="text-xs font-mono font-bold text-brand-blue uppercase">
+                  {currentSource}
+                </span>
               </div>
             </div>
-            <div className="mt-3 px-2 py-1 rounded bg-slate-800/80 border border-slate-700/50 flex items-center justify-between text-[10px] text-slate-400">
-              <span>Track 04 Buildathon</span>
-              <span className="text-emerald-400 font-mono font-semibold">Ready</span>
-            </div>
-          </div>
 
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Ledger & Ops
-            </div>
-            <NavLink to="/" className={navClass}>
-              <span>📊</span>
-              <span>Overview</span>
-            </NavLink>
-            <NavLink to="/reconciliation" className={navClass}>
-              <span>⚖️</span>
-              <span>Reconciliation</span>
-            </NavLink>
-            <NavLink to="/exceptions" className={navClass}>
-              <span>🚨</span>
-              <span>Exceptions</span>
-            </NavLink>
-            <NavLink to="/settlements" className={navClass}>
-              <span>🏦</span>
-              <span>Settlements</span>
-            </NavLink>
-
-            <div className="pt-3 px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Intelligence & Audit
-            </div>
-            <NavLink to="/ask" className={navClass}>
-              <span>💬</span>
-              <span>Ask Arivo Copilot</span>
-            </NavLink>
-            <NavLink to="/runs" className={navClass}>
-              <span>📜</span>
-              <span>Runs History</span>
-            </NavLink>
-            <NavLink to="/benchmark" className={navClass}>
-              <span>🛡️</span>
-              <span>Benchmark & AI Safety</span>
-            </NavLink>
-          </nav>
-
-          <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400 space-y-1">
-            <div className="flex justify-between items-center">
-              <span>Razorpay Integration</span>
-              <span className="text-blue-400 font-mono font-semibold">Test Mode</span>
-            </div>
-            <div className="flex justify-between items-center text-[10px] text-slate-500">
-              <span>Engine Status</span>
-              <span className="text-emerald-400 font-semibold">Active</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
-          <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-6 shadow-2xs shrink-0">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-500">AI Finance Controller Dashboard</span>
-              <span className="text-slate-300">•</span>
-              <span className="text-xs text-slate-600 font-medium">Authoritative Control Gate</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px]">
-                Deterministic Rules + Gemini
-              </span>
+              {/* Quick Switcher Trigger */}
+              <button
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-850 hover:bg-navy-800 border border-navy-700 text-xs text-tmuted hover:text-tsecondary transition-colors"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Quick Actions</span>
+                <kbd className="font-mono text-[10px] px-1 py-0.2 rounded bg-navy-900 border border-navy-700">
+                  ⌘K
+                </kbd>
+              </button>
+
+              {/* Run Reconciliation Quick Trigger */}
+              <button
+                onClick={() => setIsReconcileModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-brand-blue hover:bg-brand-hover text-white text-xs font-semibold shadow-card transition-colors"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Run Reconcile</span>
+              </button>
+
+              <div className="h-4 w-px bg-navy-700 mx-1" />
+
+              {/* System Heartbeat */}
+              <div className="flex items-center gap-2" title="Control Gate Active">
+                <span className="w-2 h-2 rounded-full bg-status-matched animate-pulse" />
+                <span className="text-xs font-mono text-status-matched font-medium hidden md:inline">
+                  OPERATIONAL
+                </span>
+              </div>
             </div>
           </header>
 
-          <div className="p-6 flex-1 overflow-y-auto">
+          {/* Scrollable Page Body */}
+          <main className="flex-1 overflow-y-auto p-6 bg-navy-950">
             <Routes>
-              <Route path="/" element={<Overview />} />
-              <Route path="/reconciliation" element={<Reconciliation />} />
-              <Route path="/exceptions" element={<Exceptions />} />
-              <Route path="/settlements" element={<Settlements />} />
-              <Route path="/ask" element={<Ask />} />
+              <Route
+                path="/"
+                element={
+                  <Overview
+                    source={currentSource}
+                    onSourceChange={setCurrentSource}
+                    onOpenCase={handleOpenCase}
+                    onOpenReconcileModal={() => setIsReconcileModalOpen(true)}
+                  />
+                }
+              />
+              <Route
+                path="/reconciliation"
+                element={
+                  <Reconciliation
+                    onOpenCase={handleOpenCase}
+                    currentSource={currentSource}
+                  />
+                }
+              />
+              <Route
+                path="/exceptions"
+                element={
+                  <Exceptions
+                    onOpenCase={handleOpenCase}
+                    currentSource={currentSource}
+                  />
+                }
+              />
+              <Route
+                path="/settlements"
+                element={<Settlements currentSource={currentSource} />}
+              />
+              <Route path="/cash-position" element={<CashPosition />} />
               <Route path="/runs" element={<Runs />} />
-              <Route path="/benchmark" element={<Benchmark />} />
+              <Route path="/audit" element={<Audit />} />
+              <Route path="/ask" element={<Ask onOpenCase={handleOpenCase} />} />
+              <Route
+                path="/benchmark"
+                element={<Benchmark onOpenCase={handleOpenCase} />}
+              />
             </Routes>
-          </div>
-        </main>
+          </main>
+        </div>
+
+        {/* Global Slide-In Evidence Drawer */}
+        <EvidenceDrawer
+          caseId={selectedCaseId}
+          onClose={handleCloseDrawer}
+          onCaseUpdated={() => {
+            // Trigger refresh if needed
+          }}
+        />
+
+        {/* Global Command Palette */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onOpenCase={handleOpenCase}
+          onTriggerReconcile={() => setIsReconcileModalOpen(true)}
+          onSyncRazorpay={handleSyncRazorpayDirect}
+        />
+
+        {/* Global Reconciliation Execution Modal */}
+        <ReconciliationModal
+          isOpen={isReconcileModalOpen}
+          onClose={() => setIsReconcileModalOpen(false)}
+          source={currentSource === 'all' ? 'synthetic' : currentSource}
+          onSuccess={() => {
+            // Refresh
+          }}
+        />
       </div>
     </Router>
   );
 }
-
-export default App;

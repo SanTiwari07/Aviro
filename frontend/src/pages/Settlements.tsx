@@ -1,16 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR } from '../api';
-import EvidenceDrawer from '../components/EvidenceDrawer';
+import { api, formatINR, formatDate, formatNumber } from '../api';
+import {
+  Layers,
+  RefreshCw,
+  AlertOctagon,
+  CheckCircle2,
+  Landmark,
+  ArrowRight,
+  X,
+  FileText,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
-export default function Settlements() {
+interface SettlementsProps {
+  currentSource: string;
+}
+
+export default function Settlements({ currentSource }: SettlementsProps) {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [selectedCase, setSelectedCase] = useState<any>(null);
+  const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
 
   const loadSettlements = () => {
     setLoading(true);
-    api.getSettlements({ source: sourceFilter, limit: 100 })
+    api.getSettlements({
+      source: currentSource === 'all' ? undefined : currentSource,
+      limit: 100,
+    })
       .then((data) => setSettlements(data || []))
       .catch((err) => console.error('Failed to load settlements:', err))
       .finally(() => setLoading(false));
@@ -18,161 +34,245 @@ export default function Settlements() {
 
   useEffect(() => {
     loadSettlements();
-  }, [sourceFilter]);
+  }, [currentSource]);
 
   const totalGross = settlements.reduce((acc, s) => acc + (s.gross_amount || 0), 0);
   const totalNet = settlements.reduce((acc, s) => acc + (s.net_amount || 0), 0);
   const totalFees = settlements.reduce((acc, s) => acc + (s.fees || 0), 0);
+  const totalTax = settlements.reduce((acc, s) => acc + (s.tax || 0), 0);
   const deltaCount = settlements.filter((s) => (s.unexplained_delta || 0) > 0).length;
+  const totalDelta = settlements.reduce((acc, s) => acc + (s.unexplained_delta || 0), 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Settlement Batches & Waterfall</h2>
-          <p className="text-sm text-slate-500">
-            Audit payment gateway settlement batches, fee deductions, tax withholdings, and bank UTRs.
+          <h2 className="text-xl font-bold text-tprimary tracking-tight">Settlement Batches & Waterfall</h2>
+          <p className="text-xs text-tmuted mt-0.5">
+            Audit gateway settlement batches, fee deductions, tax withholdings, and bank UTR credit advices.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 shadow-sm"
-          >
-            <option value="all">All Sources</option>
-            <option value="synthetic">Synthetic Benchmark</option>
-            <option value="razorpay_test">Razorpay Test Mode</option>
-          </select>
-          <button
-            onClick={loadSettlements}
-            className="px-3 py-1.5 text-xs font-semibold rounded bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm"
-          >
-            Refresh
-          </button>
-        </div>
+
+        <button
+          onClick={loadSettlements}
+          disabled={loading}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Batches</span>
+        </button>
       </div>
 
-      {/* Waterfall Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase">Total Gross Volume</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{formatINR(totalGross)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase">Gateway Deductions (Fees + Tax)</p>
-          <p className="text-xl font-bold text-slate-700 mt-1">{formatINR(totalFees)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase">Net Deposited</p>
-          <p className="text-xl font-bold text-emerald-700 mt-1">{formatINR(totalNet)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase">Waterfall Discrepancies</p>
-          <p className={`text-xl font-bold mt-1 ${deltaCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-            {deltaCount} {deltaCount > 0 ? 'anomalies' : 'clean'}
+      {/* Waterfall KPI Ribbon */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
+          <span className="text-[10px] font-mono uppercase text-tmuted">Gross Settled Volume</span>
+          <p className="text-2xl font-bold font-mono text-tprimary tabular-nums">
+            {formatINR(totalGross)}
           </p>
+          <span className="text-[11px] text-tmuted block">{settlements.length} settlement batches</span>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
+          <span className="text-[10px] font-mono uppercase text-tmuted">Total Fees & Tax Withheld</span>
+          <p className="text-2xl font-bold font-mono text-status-exception tabular-nums">
+            - {formatINR(totalFees + totalTax)}
+          </p>
+          <span className="text-[11px] text-tmuted block">MDR + 18% Statutory GST</span>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
+          <span className="text-[10px] font-mono uppercase text-tmuted">Net Bank Deposited</span>
+          <p className="text-2xl font-bold font-mono text-status-matched tabular-nums">
+            {formatINR(totalNet)}
+          </p>
+          <span className="text-[11px] text-tmuted block">Cleared via RBI NEFT / RTGS</span>
+        </div>
+
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
+          <span className="text-[10px] font-mono uppercase text-tmuted">Waterfall Delta Anomalies</span>
+          <p className={`text-2xl font-bold font-mono tabular-nums ${deltaCount > 0 ? 'text-status-exception' : 'text-status-matched'}`}>
+            {formatINR(totalDelta)}
+          </p>
+          <span className="text-[11px] text-tmuted block">
+            {deltaCount} anomalous batch{deltaCount === 1 ? '' : 'es'} detected
+          </span>
         </div>
       </div>
 
       {/* Settlements Table */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50 font-semibold text-sm text-slate-800 flex justify-between items-center">
-          <span>Settlement Records</span>
-          <span className="text-xs text-slate-500 font-normal">Click any row to inspect evidentiary waterfall</span>
-        </div>
-
-        {loading ? (
-          <div className="p-8 text-center text-slate-400 animate-pulse text-sm">
-            Loading settlements...
-          </div>
-        ) : settlements.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-sm">
-            No settlement records found for selected filter.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold">
+      <div className="rounded-xl bg-navy-850 border border-navy-700/80 shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs font-mono">
+            <thead>
+              <tr className="border-b border-navy-700 bg-navy-900/80 text-tmuted text-[10px] uppercase">
+                <th className="py-3 px-4">Settlement ID</th>
+                <th className="py-3 px-4 text-right">Gross</th>
+                <th className="py-3 px-4 text-right">Fees</th>
+                <th className="py-3 px-4 text-right">Tax (GST)</th>
+                <th className="py-3 px-4 text-right">Net Deposited</th>
+                <th className="py-3 px-4 text-right">Delta</th>
+                <th className="py-3 px-4">Bank UTR</th>
+                <th className="py-3 px-4">Date</th>
+                <th className="py-3 px-4 text-right">Inspect</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-navy-700/50">
+              {loading && settlements.length === 0 ? (
                 <tr>
-                  <th className="p-3">Settlement ID</th>
-                  <th className="p-3">Source</th>
-                  <th className="p-3">Gross (₹)</th>
-                  <th className="p-3">Fees (₹)</th>
-                  <th className="p-3">Tax (₹)</th>
-                  <th className="p-3">Net (₹)</th>
-                  <th className="p-3">UTR / Bank Ref</th>
-                  <th className="p-3">Waterfall Delta</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Created</th>
+                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                    Loading settlement batches from database...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {settlements.map((s) => (
-                  <tr
-                    key={s.settlement_id}
-                    onClick={() =>
-                      setSelectedCase({
-                        case_id: `CASE_SETL_${s.settlement_id.replace(/^setl_|^SET_/, '')}`,
-                        settlement_id: s.settlement_id,
-                        financial_impact: s.gross_amount,
-                        amount_delta: s.unexplained_delta || 0,
-                        source: s.source,
-                        status: s.unexplained_delta > 0 ? 'EXCEPTION' : 'MATCHED',
-                      })
-                    }
-                    className="hover:bg-slate-50 cursor-pointer transition-colors"
-                  >
-                    <td className="p-3 font-mono font-bold text-slate-900">{s.settlement_id}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          s.source === 'razorpay_test'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        {s.source === 'razorpay_test' ? '⚡ Razorpay' : '🔬 Synthetic'}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono font-medium text-slate-900">
-                      {formatINR(s.gross_amount)}
-                    </td>
-                    <td className="p-3 font-mono text-slate-600">{formatINR(s.fees)}</td>
-                    <td className="p-3 font-mono text-slate-600">{formatINR(s.tax)}</td>
-                    <td className="p-3 font-mono font-semibold text-emerald-700">
-                      {formatINR(s.net_amount)}
-                    </td>
-                    <td className="p-3 font-mono text-slate-600">{s.utr || 'Pending'}</td>
-                    <td className="p-3">
-                      {s.unexplained_delta > 0 ? (
-                        <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 font-mono font-bold">
-                          {formatINR(s.unexplained_delta)}
+              ) : settlements.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                    No settlement records found.
+                  </td>
+                </tr>
+              ) : (
+                settlements.map((s) => {
+                  const hasDelta = (s.unexplained_delta || 0) > 0;
+                  return (
+                    <tr
+                      key={s.settlement_id}
+                      onClick={() => setSelectedSettlement(s)}
+                      className={`hover:bg-navy-800/80 cursor-pointer transition-colors group ${
+                        hasDelta ? 'bg-status-exception/5' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-bold text-tprimary group-hover:text-brand-blue">
+                        {s.settlement_id}
+                      </td>
+                      <td className="py-3 px-4 text-right text-tprimary tabular-nums">
+                        {formatINR(s.gross_amount)}
+                      </td>
+                      <td className="py-3 px-4 text-right text-status-exception tabular-nums">
+                        - {formatINR(s.fees)}
+                      </td>
+                      <td className="py-3 px-4 text-right text-status-exception tabular-nums">
+                        - {formatINR(s.tax)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-status-matched tabular-nums">
+                        {formatINR(s.net_amount)}
+                      </td>
+                      <td className="py-3 px-4 text-right tabular-nums">
+                        {hasDelta ? (
+                          <span className="font-bold text-status-exception px-1.5 py-0.5 rounded bg-status-exception/15 border border-status-exception/30">
+                            {formatINR(s.unexplained_delta)}
+                          </span>
+                        ) : (
+                          <span className="text-tmuted">₹0.00</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-tsecondary">
+                        {s.utr || 'Pending'}
+                      </td>
+                      <td className="py-3 px-4 text-tmuted">
+                        {formatDate(s.created_at)}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-[11px] text-brand-blue group-hover:underline flex items-center justify-end gap-1">
+                          Waterfall <ArrowRight className="w-3 h-3" />
                         </span>
-                      ) : (
-                        <span className="text-emerald-600 font-medium">✓ Clean (₹0)</span>
-                      )}
-                    </td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 font-semibold uppercase text-[10px]">
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-slate-400 text-[11px]">
-                      {s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {selectedCase && (
-        <EvidenceDrawer caseData={selectedCase} onClose={() => setSelectedCase(null)} />
-      )}
+      {/* Waterfall Detail Modal */}
+      <AnimatePresence>
+        {selectedSettlement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setSelectedSettlement(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-navy-850 border border-navy-700 rounded-xl shadow-elevated p-6 z-10 space-y-4"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-navy-700">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-brand-blue" />
+                  <span className="font-mono font-bold text-sm text-tprimary">
+                    Waterfall: {selectedSettlement.settlement_id}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedSettlement(null)}
+                  className="p-1 rounded text-tmuted hover:text-tprimary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono">
+                <div className="flex justify-between py-1 border-b border-navy-800">
+                  <span className="text-tsecondary">Gross Captured Volume:</span>
+                  <span className="font-bold text-tprimary tabular-nums">
+                    + {formatINR(selectedSettlement.gross_amount)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-navy-800">
+                  <span className="text-tmuted">MDR Gateway Fees:</span>
+                  <span className="text-status-exception tabular-nums">
+                    - {formatINR(selectedSettlement.fees)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-navy-800">
+                  <span className="text-tmuted">Statutory GST (18%):</span>
+                  <span className="text-status-exception tabular-nums">
+                    - {formatINR(selectedSettlement.tax)}
+                  </span>
+                </div>
+                {selectedSettlement.refunds > 0 && (
+                  <div className="flex justify-between py-1 border-b border-navy-800">
+                    <span className="text-tmuted">Net Refund Deductions:</span>
+                    <span className="text-status-exception tabular-nums">
+                      - {formatINR(selectedSettlement.refunds)}
+                    </span>
+                  </div>
+                )}
+                {selectedSettlement.chargebacks > 0 && (
+                  <div className="flex justify-between py-1 border-b border-navy-800">
+                    <span className="text-tmuted">Chargeback Deductions:</span>
+                    <span className="text-status-exception tabular-nums">
+                      - {formatINR(selectedSettlement.chargebacks)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between py-2 border-t border-navy-700 font-bold text-sm">
+                  <span className="text-tprimary">Actual Bank Deposited:</span>
+                  <span className="text-status-matched tabular-nums">
+                    = {formatINR(selectedSettlement.net_amount)}
+                  </span>
+                </div>
+
+                {selectedSettlement.unexplained_delta > 0 && (
+                  <div className="p-3 rounded-lg bg-status-exception/15 border border-status-exception/30 flex items-center justify-between text-status-exception font-bold">
+                    <span>UNEXPLAINED ARITHMETIC DELTA:</span>
+                    <span className="tabular-nums">{formatINR(selectedSettlement.unexplained_delta)}</span>
+                  </div>
+                )}
+
+                <div className="pt-2 text-[11px] text-tmuted space-y-1">
+                  <p>Bank Reference (UTR): {selectedSettlement.utr || 'Pending NEFT clearance'}</p>
+                  <p>Settlement Date: {formatDate(selectedSettlement.created_at)}</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -7,6 +7,7 @@ Provides:
 
 import os
 import re
+import math
 import json
 import logging
 from typing import Dict, Any, List, Optional
@@ -36,10 +37,110 @@ def format_inr(paise: int) -> str:
     return f"₹{rupees:,.2f}"
 
 
+def validate_gemini_case_response(raw_text: str, case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Strict Post-Gemini Contract Validator.
+    Parses, strips markdown code blocks, validates schema, enums, confidence bounds,
+    and checks for hallucinated identifiers.
+    Returns valid parsed dict, or raises ValueError on contract breach.
+    """
+    if not raw_text or not raw_text.strip():
+        raise ValueError("Empty response text from LLM")
+
+    cleaned = raw_text.strip()
+    # Strip markdown code blocks ```json ... ``` or ``` ... ```
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+        cleaned = cleaned.strip()
+
+    try:
+        data = json.loads(cleaned)
+    except Exception as err:
+        raise ValueError(f"Malformed JSON from LLM: {err}")
+
+    if not isinstance(data, dict):
+        raise ValueError(f"LLM output is not a JSON object: {type(data)}")
+
+    # Required fields
+    valid_decisions = {"MATCHED", "REVIEW", "EXCEPTION"}
+    rec_raw = data.get("recommended_decision")
+    rec = str(rec_raw).strip().upper() if rec_raw else None
+    if rec not in valid_decisions:
+        raise ValueError(f"Invalid recommended_decision: {rec_raw}")
+    data["recommended_decision"] = rec
+
+    # Confidence check
+    conf_raw = data.get("confidence")
+    if conf_raw is None:
+        conf = 0.0
+    elif isinstance(conf_raw, (bool, list, dict)):
+        raise ValueError(f"Invalid confidence type: {type(conf_raw)}")
+    else:
+        try:
+            conf = float(conf_raw)
+        except (ValueError, TypeError):
+            raise ValueError(f"Non-numeric confidence: {conf_raw}")
+
+        if math.isnan(conf) or math.isinf(conf):
+            raise ValueError("Confidence is NaN or Infinity")
+
+    # Clamp confidence
+    data["confidence"] = max(0.0, min(1.0, conf))
+
+    # Evidence arrays
+    if "supporting_evidence" in data and not isinstance(data["supporting_evidence"], list):
+        data["supporting_evidence"] = [str(data["supporting_evidence"])]
+    elif "supporting_evidence" not in data:
+        data["supporting_evidence"] = []
+
+    if "contradicting_evidence" in data and not isinstance(data["contradicting_evidence"], list):
+        data["contradicting_evidence"] = [str(data["contradicting_evidence"])]
+    elif "contradicting_evidence" not in data:
+        data["contradicting_evidence"] = []
+
+    if "summary" not in data or not isinstance(data["summary"], str):
+        data["summary"] = str(data.get("summary") or "AI automated investigation.")
+
+    # Anti-hallucination check if case context is provided
+    if case:
+        expected_pay_id = case.get("payment_id")
+        candidate_setl_id = case.get("settlement_id")
+        if "payment_id" in data and data["payment_id"] and data["payment_id"] != expected_pay_id:
+            raise ValueError(f"Hallucinated payment_id: {data['payment_id']} != {expected_pay_id}")
+        if "settlement_id" in data and data["settlement_id"] and candidate_setl_id and data["settlement_id"] != candidate_setl_id:
+            cand_pool = set(case.get("candidate_settlement_ids") or [])
+            cand_pool.add(candidate_setl_id)
+            if data["settlement_id"] not in cand_pool:
+                raise ValueError(f"Hallucinated settlement_id: {data['settlement_id']} not in candidate pool")
+
+    return data
+
+
+def parse_gemini_response_safe(raw_text: str, case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Safe wrapper for Gemini response parsing.
+    Returns validated data, or safe fallback (REVIEW, confidence 0.0) on any validation failure.
+    """
+    try:
+        return validate_gemini_case_response(raw_text, case)
+    except Exception as err:
+        logger.warning(f"[Gemini] Response failed validation: {err}")
+        return {
+            "classification": "AI_FAILURE",
+            "summary": f"Gemini response invalid: {str(err)}",
+            "supporting_evidence": [],
+            "contradicting_evidence": ["Automated AI response failed validation."],
+            "recommended_decision": "REVIEW",
+            "recommended_action": "Manual review required by finance team.",
+            "confidence": 0.0,
+        }
+
+
 def investigate_case(evidence: Dict[str, Any]) -> Dict[str, Any]:
     """
     Calls Gemini to investigate an ambiguous reconciliation case.
-    Enforces strict JSON schema validation.
+    Enforces strict JSON schema validation and Markdown stripping.
     Guarantees safe fallback on failure: status REVIEW, confidence 0.0.
     """
     fallback = {
@@ -86,16 +187,7 @@ def investigate_case(evidence: Dict[str, Any]) -> Dict[str, Any]:
             ),
         )
 
-        result = json.loads(response.text)
-        valid_decisions = {"MATCHED", "REVIEW", "EXCEPTION"}
-        if "recommended_decision" not in result or result["recommended_decision"] not in valid_decisions:
-            logger.warning(f"[Gemini] Invalid recommended_decision: {result}")
-            return fallback
-
-        # Ensure confidence is clamped between 0.0 and 1.0
-        conf = float(result.get("confidence", 0.5))
-        result["confidence"] = max(0.0, min(1.0, conf))
-        return result
+        return validate_gemini_case_response(response.text, evidence)
 
     except Exception as e:
         logger.error(f"[Gemini] investigate_case failed: {e}")

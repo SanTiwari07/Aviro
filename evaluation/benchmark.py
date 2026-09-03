@@ -15,6 +15,7 @@ import os
 import csv
 import json
 import time
+from collections import Counter
 from typing import Dict, Any, List
 
 HIGH_VALUE_THRESHOLD_PAISE = 5000000
@@ -88,46 +89,78 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
     ambiguous_investigated = 0
 
     settlements_allocated: set = set()
+    pay_ref_counts = Counter(p.get("reference") or f"REF-{p['payment_id']}" for p in payments)
 
     for p in payments:
         amt = p["amount"]
         is_high_val = amt >= HIGH_VALUE_THRESHOLD_PAISE
         expected_ref = f"REF-{p['payment_id']}"
+        p_ref = p.get("reference")
+        is_duplicate_claim = (pay_ref_counts.get(expected_ref, 0) > 1) or (bool(p_ref) and pay_ref_counts.get(p_ref, 0) > 1)
         s = settlements_by_ref.get(expected_ref)
 
         candidate = {}
         if s:
-            delta = abs(amt - s["gross_amount"])
-            is_dup = s["settlement_id"] in settlements_allocated
-            if not is_dup:
-                settlements_allocated.add(s["settlement_id"])
+            wf_gross = int(s.get("gross_amount", 0))
+            wf_fees = int(s.get("fees", 0))
+            wf_tax = int(s.get("tax", 0))
+            wf_refunds = int(s.get("refunds", 0))
+            wf_chargebacks = int(s.get("chargebacks", 0))
+            wf_adj = int(s.get("adjustments", 0))
+            expected_net = wf_gross - wf_fees - wf_tax - wf_refunds - wf_chargebacks + wf_adj
+            actual_net = int(s.get("net_amount", wf_gross))
+            waterfall_delta = abs(expected_net - actual_net)
+            unexplained_delta = (waterfall_delta > 0) or (int(s.get("unexplained_delta", 0)) > 0)
 
-            if delta == 0 and not is_dup:
+            delta = abs(amt - wf_gross)
+            is_dup = (s["settlement_id"] in settlements_allocated) or is_duplicate_claim
+            settlements_allocated.add(s["settlement_id"])
+
+            if delta == 0 and not is_dup and not unexplained_delta:
                 candidate = {
                     "match_method": "EXACT_ID",
                     "amount_delta": 0,
                     "multiple_candidates": False,
                     "high_value": is_high_val,
                     "conflicting_evidence": False,
+                    "unexplained_delta": False,
                 }
             else:
+                method = "AMOUNT_MISMATCH" if delta != 0 else (
+                    "DUPLICATE" if is_dup else "WATERFALL_ANOMALY"
+                )
+                effective_delta = delta if delta != 0 else max(waterfall_delta, int(s.get("unexplained_delta", 0)))
                 candidate = {
-                    "match_method": "AMOUNT_MISMATCH" if delta != 0 else "DUPLICATE",
-                    "amount_delta": delta,
+                    "match_method": method,
+                    "amount_delta": effective_delta,
                     "multiple_candidates": False,
                     "high_value": is_high_val,
                     "conflicting_evidence": True,
+                    "unexplained_delta": unexplained_delta,
                 }
         else:
             candidates = [x for x in settlements if x["gross_amount"] == amt and x["settlement_id"] not in settlements_allocated]
             if len(candidates) == 1:
-                settlements_allocated.add(candidates[0]["settlement_id"])
+                cand = candidates[0]
+                settlements_allocated.add(cand["settlement_id"])
+                cand_gross = int(cand.get("gross_amount", 0))
+                cand_fees = int(cand.get("fees", 0))
+                cand_tax = int(cand.get("tax", 0))
+                cand_refunds = int(cand.get("refunds", 0))
+                cand_chargebacks = int(cand.get("chargebacks", 0))
+                cand_adj = int(cand.get("adjustments", 0))
+                c_expected_net = cand_gross - cand_fees - cand_tax - cand_refunds - cand_chargebacks + cand_adj
+                c_actual_net = int(cand.get("net_amount", cand_gross))
+                c_waterfall_delta = abs(c_expected_net - c_actual_net)
+                c_unexplained = (c_waterfall_delta > 0) or (int(cand.get("unexplained_delta", 0)) > 0)
+
                 candidate = {
                     "match_method": "AMOUNT_DATE",
-                    "amount_delta": 0,
+                    "amount_delta": c_waterfall_delta,
                     "multiple_candidates": False,
                     "high_value": is_high_val,
                     "conflicting_evidence": True,
+                    "unexplained_delta": c_unexplained,
                 }
             elif len(candidates) > 1:
                 candidate = {
@@ -136,6 +169,7 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
                     "multiple_candidates": True,
                     "high_value": is_high_val,
                     "conflicting_evidence": True,
+                    "unexplained_delta": False,
                 }
             else:
                 candidate = {
@@ -144,6 +178,7 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
                     "multiple_candidates": False,
                     "high_value": is_high_val,
                     "conflicting_evidence": False,
+                    "unexplained_delta": False,
                 }
 
         # Control gate evaluation
@@ -156,6 +191,8 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
             reasons.append("High-value transaction with ambiguity.")
         if candidate.get("conflicting_evidence"):
             reasons.append("Conflicting evidence.")
+        if candidate.get("unexplained_delta"):
+            reasons.append("Unexplained settlement waterfall delta.")
 
         control_result = "BLOCK" if reasons else "PASS"
 
@@ -166,7 +203,7 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
             # Simulate realistic AI behavior: occasionally overconfident on heuristic amount matches
             if candidate["match_method"] == "AMOUNT_DATE" and is_high_val:
                 ai_recommendation = "MATCHED"  # Overconfident AI!
-            elif candidate.get("amount_delta", 0) > 0:
+            elif candidate.get("amount_delta", 0) > 0 or candidate.get("unexplained_delta"):
                 ai_recommendation = "EXCEPTION"
             else:
                 ai_recommendation = "REVIEW"
@@ -178,7 +215,14 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
 
         # Final decision
         if control_result == "BLOCK":
-            final_status = "EXCEPTION" if ai_recommendation == "EXCEPTION" else "REVIEW"
+            if (
+                ai_recommendation == "EXCEPTION"
+                or candidate.get("unexplained_delta")
+                or candidate.get("match_method") in ("WATERFALL_ANOMALY", "NO_MATCH")
+            ):
+                final_status = "EXCEPTION"
+            else:
+                final_status = "REVIEW"
         elif candidate.get("match_method") == "EXACT_ID":
             final_status = "MATCHED"
         elif ai_recommendation == "MATCHED":
@@ -295,7 +339,7 @@ def main():
     print(f"  Precision:            Baseline: {b['precision'] * 100:.2f}%  ->  ARIVO: {a['precision'] * 100:.2f}%")
     print(f"  Recall:               Baseline: {b['recall'] * 100:.2f}%  ->  ARIVO: {a['recall'] * 100:.2f}%")
     print(f"  F1 Score:             Baseline: {b['f1_score']:.4f}     ->  ARIVO: {a['f1_score']:.4f}")
-    print(f"  False Auto-Matches:   Baseline: {b['false_auto_matches']}        ->  ARIVO: {a['false_auto_matches']} (0 false matches!)")
+    print(f"  False Auto-Matches:   Baseline: {b['false_auto_matches']}        ->  ARIVO: {a['false_auto_matches']}")
     print(f"  False Exposure:       Baseline: Rs. {b['false_match_exposure_paise']/100:,.2f} -> ARIVO: Rs. {a['false_match_exposure_paise']/100:,.2f}")
     print("\nMEASURABLE AI VALUE & SAFETY:")
     print(f"  Ambiguous Cases Investigated:      {ai['ambiguous_cases_investigated']}")

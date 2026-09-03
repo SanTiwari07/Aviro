@@ -1,68 +1,111 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { api } from '../api';
-import EvidenceDrawer from '../components/EvidenceDrawer';
+import { api, AskResponse, PolicyExcerpt } from '../api';
+import {
+  Terminal,
+  Send,
+  Loader2,
+  BookOpen,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+  Layers,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
-interface ReferencedRecord {
-  id: string;
-  case_id?: string;
-  type?: string;
-  status?: string;
+interface AskProps {
+  onOpenCase: (caseId: string) => void;
 }
 
-interface Message {
+interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
-  referenced_records?: ReferencedRecord[];
+  records?: Array<any>;
+  policies?: PolicyExcerpt[];
+  classification?: string;
+  recommended_actions?: string[];
+  grounded?: boolean;
 }
 
 const SUGGESTED_QUERIES = [
-  'How much money is currently unresolved?',
-  'Which settlement has the largest unexplained delta?',
-  'How many high-value cases are unresolved?',
-  'Show the largest unresolved settlement',
+  'How much money is currently unresolved and what are the largest items?',
+  'Why are unexplained deltas in settlement waterfalls routed to exception?',
+  'What is our policy on high-value transactions above ₹50,000?',
+  'Inspect payment PAY_FLAGSHIP_001 and explain the Control Gate verdict.',
 ];
 
-export default function Ask() {
-  const [messages, setMessages] = useState<Message[]>([
+export default function Ask({ onOpenCase }: AskProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
+      id: 'welcome',
       role: 'assistant',
       content:
-        'Hello. I am Arivo, your AI Finance Controller.\n\nI answer queries grounded strictly on verified database records and financial invariants. Ask about current unresolved exposure, specific transactions, or settlement deltas.',
+        'ARIVO GROUNDED AI FINANCE COPILOT\n\n' +
+        'I answer financial control queries grounded strictly on verified database records and our 6 indexed policy documents.\n\n' +
+        'Select a prompt below or type any financial investigation question:',
+      recommended_actions: [
+        'Query unresolved exposure',
+        'Audit settlement waterfall deltas',
+        'Verify high-value invariants',
+      ],
+      grounded: true,
     },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedCase, setSelectedCase] = useState<any | null>(null);
+  const [expandedPolicies, setExpandedPolicies] = useState<Record<string, boolean>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const sendQuestion = async (questionText: string) => {
-    const question = questionText.trim();
-    if (!question || loading) return;
+  const togglePolicyExpand = (msgId: string) => {
+    setExpandedPolicies(prev => ({ ...prev, [msgId]: !prev[msgId] }));
+  };
 
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+  const handleSend = async (textToSend: string) => {
+    const q = textToSend.trim();
+    if (!q || loading) return;
+
+    const userMsgId = `user-${Date.now()}`;
+    const botMsgId = `bot-${Date.now()}`;
+
+    setMessages((prev) => [
+      ...prev,
+      { id: userMsgId, role: 'user', content: q },
+    ]);
     setInput('');
     setLoading(true);
 
     try {
-      const data = await api.askArivo(question);
+      const res: AskResponse = await api.askArivo(q);
       setMessages((prev) => [
         ...prev,
         {
+          id: botMsgId,
           role: 'assistant',
-          content: data.answer,
-          referenced_records: data.referenced_records || [],
+          content: res.answer,
+          records: res.records || [],
+          policies: res.policies || [],
+          classification: res.classification,
+          recommended_actions: res.recommended_actions || [],
+          grounded: res.grounded,
         },
       ]);
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
         {
+          id: botMsgId,
           role: 'assistant',
-          content: `Error communicating with controller: ${err.message ?? 'Unknown error.'}`,
+          content: `Controller Error: ${err.message || 'Unable to retrieve grounded answer.'}`,
+          grounded: false,
         },
       ]);
     } finally {
@@ -72,125 +115,192 @@ export default function Ask() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendQuestion(input);
-  };
-
-  const openEvidence = (rec: ReferencedRecord) => {
-    setSelectedCase({
-      case_id: rec.case_id || rec.id,
-      payment_id: rec.id.startsWith('PAY') || rec.id.startsWith('pay') ? rec.id : undefined,
-      settlement_id: rec.id.startsWith('SET') || rec.id.startsWith('setl') ? rec.id : undefined,
-      financial_impact: 0,
-      status: rec.status || 'REVIEW',
-    });
+    handleSend(input);
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-      {/* Top Header */}
-      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span>🤖</span> Ask Arivo — Grounded Finance Copilot
-          </h2>
-          <p className="text-xs text-slate-500">
-            Grounded strictly in verified database ledgers. Zero hallucinated figures.
-          </p>
+    <div className="flex flex-col h-[calc(100vh-6rem)] space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-2 border-b border-navy-700/80">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-brand-blue/15 text-brand-blue border border-brand-blue/30">
+            <Terminal className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-tprimary tracking-tight">Ask Arivo — Grounded AI Copilot</h2>
+            <p className="text-xs text-tmuted font-mono">
+              Strictly grounded on verified SQLite records + RAG Policy Knowledge Base. No raw hallucinations.
+            </p>
+          </div>
         </div>
-        <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-          Audit Grounded
-        </span>
+
+        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-status-matched">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>RAG Policies Indexed (6/6)</span>
+        </div>
       </div>
 
-      {/* Suggested Prompts Banner */}
-      <div className="p-3 bg-indigo-50/50 border-b border-indigo-100 flex flex-wrap gap-2 items-center text-xs">
-        <span className="font-semibold text-indigo-900 text-[11px] uppercase tracking-wider">
-          Suggested:
-        </span>
+      {/* Suggested Prompt Chips */}
+      <div className="flex flex-wrap gap-2">
         {SUGGESTED_QUERIES.map((q, idx) => (
           <button
             key={idx}
-            onClick={() => sendQuestion(q)}
             disabled={loading}
-            className="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-100 border border-indigo-200 text-indigo-800 font-medium transition-colors shadow-2xs text-[11px] disabled:opacity-50"
+            onClick={() => handleSend(q)}
+            className="text-xs font-mono px-3 py-1.5 rounded-lg bg-navy-850 hover:bg-navy-800 border border-navy-700 text-tsecondary hover:text-tprimary transition-colors text-left disabled:opacity-50"
           >
-            {q}
+            "{q}"
           </button>
         ))}
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 text-sm">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[85%] rounded-xl p-4 leading-relaxed shadow-2xs ${
-                m.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-none'
-                  : 'bg-slate-100 text-slate-900 rounded-bl-none border border-slate-200'
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+      {/* Conversation Thread */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 rounded-xl bg-navy-900 border border-navy-700/80 shadow-card">
+        {messages.map((m) => {
+          const isUser = m.role === 'user';
+          const hasPolicies = m.policies && m.policies.length > 0;
+          const isExpanded = !!expandedPolicies[m.id];
 
-              {/* Actionable Clickable Evidence Chips */}
-              {m.referenced_records && m.referenced_records.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-1.5">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    Referenced Accounting Records:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {m.referenced_records.map((rec, rIdx) => (
-                      <button
-                        key={rIdx}
-                        onClick={() => openEvidence(rec)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold shadow-2xs transition-colors"
+          return (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+            >
+              <div
+                className={`max-w-3xl rounded-xl p-4 space-y-3 ${
+                  isUser
+                    ? 'bg-brand-blue text-white shadow-card font-mono text-xs'
+                    : 'bg-navy-850 border border-navy-700/80 text-tprimary shadow-card w-full'
+                }`}
+              >
+                {!isUser && (
+                  <div className="flex items-center justify-between pb-2 border-b border-navy-700/60 text-[11px] font-mono text-tmuted">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-3.5 h-3.5 text-brand-blue" />
+                      <span className="text-tsecondary font-semibold">ARIVO CONTROLLER AI</span>
+                    </div>
+                    {m.grounded && (
+                      <span className="text-status-matched flex items-center gap-1 font-semibold">
+                        <ShieldCheck className="w-3 h-3" /> Grounded Proof
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Main Markdown / Text Content */}
+                <div className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                  {m.content}
+                </div>
+
+                {/* Referenced Database Records */}
+                {m.records && m.records.length > 0 && (
+                  <div className="pt-2 border-t border-navy-700/60 space-y-2">
+                    <span className="text-[11px] font-mono uppercase text-tmuted block">
+                      Referenced Financial Records:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {m.records.map((r, i) => {
+                        const recId = r.id || r.case_id || r.payment_id || r.settlement_id;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => recId && onOpenCase(recId)}
+                            className="p-2.5 rounded-lg bg-navy-900 border border-navy-700 hover:border-brand-blue/50 cursor-pointer transition-colors flex items-center justify-between text-xs font-mono group"
+                          >
+                            <div>
+                              <span className="text-brand-blue font-bold group-hover:underline">{recId}</span>
+                              <div className="text-[11px] text-tmuted">
+                                {r.amount_formatted || r.gross_formatted || r.impact_formatted || '—'} • {r.status || r.control_result || ''}
+                              </div>
+                            </div>
+                            <ArrowRight className="w-3.5 h-3.5 text-tmuted group-hover:text-brand-blue" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Retrieved Policy Excerpts */}
+                {hasPolicies && (
+                  <div className="pt-2 border-t border-navy-700/60">
+                    <button
+                      onClick={() => togglePolicyExpand(m.id)}
+                      className="flex items-center justify-between w-full text-xs font-mono text-brand-blue hover:underline py-1"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Retrieved Policy Rules ({m.policies!.length} Excerpts)</span>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="space-y-2 mt-2 pt-2 border-t border-navy-700/40">
+                        {m.policies!.map((p, idx) => (
+                          <div key={idx} className="p-2.5 rounded bg-navy-900 border border-navy-700/80 text-xs font-mono space-y-1">
+                            <div className="flex items-center justify-between text-[11px] text-tmuted">
+                              <span className="font-bold text-tsecondary">{p.name} (v{p.version})</span>
+                              <span>§ {p.section}</span>
+                            </div>
+                            <p className="text-tmuted text-[11px] italic leading-relaxed">
+                              "{p.excerpt}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Recommended Controller Actions */}
+                {m.recommended_actions && m.recommended_actions.length > 0 && (
+                  <div className="pt-2 border-t border-navy-700/60 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase text-tmuted">Recommended Action:</span>
+                    {m.recommended_actions.map((act, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[11px] font-mono px-2 py-0.5 rounded bg-navy-900 text-brand-blue border border-brand-blue/30"
                       >
-                        <span>🔍</span>
-                        <span>View Evidence:</span>
-                        <span className="font-mono text-indigo-600">{rec.id}</span>
-                      </button>
+                        {act}
+                      </span>
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
 
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-slate-100 rounded-xl rounded-bl-none p-4 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
-              <span className="animate-spin text-indigo-600 font-bold">⚙</span>
-              <span>Querying verified financial ledgers and assembling audit response…</span>
-            </div>
+          <div className="flex items-center gap-2 p-4 text-xs font-mono text-tmuted bg-navy-850 rounded-xl border border-navy-700 w-fit">
+            <Loader2 className="w-4 h-4 animate-spin text-brand-blue" />
+            <span>Consulting verified database & policy index...</span>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input Bar */}
-      <div className="p-4 border-t border-slate-200 bg-white">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-            placeholder="Ask about a payment, settlement delta, or current exposure..."
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition shadow-sm"
-          >
-            Ask
-          </button>
-        </form>
-      </div>
-
-      {selectedCase && (
-        <EvidenceDrawer caseData={selectedCase} onClose={() => setSelectedCase(null)} />
-      )}
+      {/* Input Box */}
+      <form onSubmit={handleSubmit} className="relative flex items-center">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about exposure, discrepancies, or policy rules..."
+          disabled={loading}
+          className="w-full bg-navy-850 border border-navy-700 rounded-xl pl-4 pr-12 py-3 text-xs sm:text-sm text-tprimary placeholder-tmuted focus:outline-none focus:border-brand-blue font-sans shadow-card disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || loading}
+          className="absolute right-2.5 p-2 rounded-lg bg-brand-blue hover:bg-brand-hover text-white transition-colors disabled:opacity-30"
+        >
+          <Send className="w-4 h-4" />
+        </button>
+      </form>
     </div>
   );
 }

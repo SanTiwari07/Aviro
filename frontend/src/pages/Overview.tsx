@@ -1,40 +1,64 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR } from '../api';
+import { api, formatINR, formatNumber, formatDate } from '../api';
+import {
+  Play,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  AlertOctagon,
+  TrendingUp,
+  ShieldCheck,
+  Cpu,
+  Layers,
+  ArrowRight,
+  ExternalLink,
+  DollarSign,
+  Activity,
+  FileSpreadsheet,
+} from 'lucide-react';
+import { motion } from 'motion/react';
 
-export default function Overview() {
-  const [source, setSource] = useState<'synthetic' | 'razorpay_test'>('synthetic');
+interface OverviewProps {
+  source: string;
+  onSourceChange: (source: string) => void;
+  onOpenCase: (caseId: string) => void;
+  onOpenReconcileModal: () => void;
+}
+
+export default function Overview({
+  source,
+  onSourceChange,
+  onOpenCase,
+  onOpenReconcileModal,
+}: OverviewProps) {
   const [dashboard, setDashboard] = useState<any>(null);
-  const [rzpStatus, setRzpStatus] = useState<any>(null);
   const [forecast, setForecast] = useState<any>(null);
-  const [health, setHealth] = useState<any>(null);
-
+  const [rzpStatus, setRzpStatus] = useState<any>(null);
+  const [exceptions, setExceptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const [runResult, setRunResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadAll = () => {
+  const loadOverviewData = () => {
     setLoading(true);
     Promise.all([
       api.getDashboard(source),
-      api.getRazorpayStatus().catch(() => null),
       api.getCashForecast().catch(() => null),
-      api.getControlHealth().catch(() => null),
+      api.getRazorpayStatus().catch(() => null),
+      api.getExceptions({ source, limit: 5 }).catch(() => []),
     ])
-      .then(([dash, rzp, fcast, hlth]) => {
+      .then(([dash, fcast, rzp, exc]) => {
         setDashboard(dash);
-        if (rzp) setRzpStatus(rzp);
         if (fcast) setForecast(fcast);
-        if (hlth) setHealth(hlth);
+        if (rzp) setRzpStatus(rzp);
+        if (Array.isArray(exc)) setExceptions(exc);
       })
-      .catch((e) => setError(e.message))
+      .catch((err) => console.error('Overview load failed:', err))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    loadAll();
+    loadOverviewData();
   }, [source]);
 
   const handleSyncRazorpay = async () => {
@@ -42,317 +66,280 @@ export default function Overview() {
     setSyncMessage(null);
     try {
       const res = await api.syncRazorpay();
-      if (res.status === 'SUCCESS') {
-        setSyncMessage(`✓ Synced ${res.payments_fetched} payments and ${res.settlements_fetched} settlements.`);
-      } else {
-        setSyncMessage(`⚠️ Sync returned: ${res.status}. ${res.error_message || ''}`);
-      }
-      loadAll();
-    } catch (e: any) {
-      setSyncMessage(`⚠️ Razorpay Sync issue: ${e.message} (Preserving last-known-good snapshot).`);
+      setSyncMessage(`Synced ${res.payments_fetched || 0} payments and ${res.settlements_fetched || 0} settlements.`);
+      loadOverviewData();
+    } catch (err: any) {
+      setSyncMessage(`Sync note: ${err.message}`);
     } finally {
       setSyncing(false);
     }
   };
 
-  const handleRunReconciliation = async () => {
-    setRunning(true);
-    setRunResult(null);
-    try {
-      const res = await api.runReconciliation(source);
-      setRunResult(res);
-      loadAll();
-    } catch (e: any) {
-      setRunResult({ error: e.message });
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  const exposure = dashboard?.unresolved_exposure;
-  const cashPos = dashboard?.cash_position;
+  const d = dashboard || {};
+  const totalVolume = d.total_processed_volume || d.total_volume || 0;
+  const totalCount = d.total_records || d.total_cases || 0;
+  const matchedVol = d.matched_volume || 0;
+  const matchedCount = d.matched_count || 0;
+  const reviewVol = d.review_volume || 0;
+  const reviewCount = d.review_count || 0;
+  const exceptionVol = d.exception_volume || 0;
+  const exceptionCount = d.exception_count || 0;
+  const unresolvedExposure = d.unresolved_financial_exposure || (reviewVol + exceptionVol);
+  const highValExposure = d.high_value_exposure || 0;
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Source Selector & Provider Status */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Top Action & Workspace Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-            Active Data Environment
-          </span>
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={() => setSource('synthetic')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                source === 'synthetic'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              🔬 Controlled Synthetic Benchmark (5,000+ Txns)
-            </button>
-            <button
-              onClick={() => setSource('razorpay_test')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                source === 'razorpay_test'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              ⚡ Razorpay Test Mode API
-            </button>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-tprimary tracking-tight">Financial Control Room</h1>
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-status-matched/15 text-status-matched border border-status-matched/30 font-bold">
+              LIVE MONITOR
+            </span>
           </div>
+          <p className="text-xs text-tmuted mt-0.5 font-mono">
+            Deterministic Reconciliation • Gemini 2.5 Investigation • Authoritative Control Gate
+          </p>
         </div>
 
-        {/* Razorpay Status & Sync Actions */}
-        <div className="flex flex-col items-end gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500">Razorpay Test Mode:</span>
-            <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                rzpStatus?.connection?.status === 'AUTHENTICATED'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : rzpStatus?.is_configured
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              {rzpStatus?.connection?.status === 'AUTHENTICATED'
-                ? '● API Live & Authenticated'
-                : rzpStatus?.is_configured
-                ? '● Test Mode Configured'
-                : '○ Staged Test Mode'}
-            </span>
-            <button
-              onClick={handleSyncRazorpay}
-              disabled={syncing}
-              className="px-3 py-1 text-xs font-semibold rounded bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 shadow-sm disabled:opacity-50"
-            >
-              {syncing ? 'Syncing...' : 'Sync Razorpay'}
-            </button>
-          </div>
-          {rzpStatus?.last_successful_snapshot?.completed_at && (
-            <span className="text-[11px] font-mono text-slate-400">
-              Last Snapshot: {new Date(rzpStatus.last_successful_snapshot.completed_at).toLocaleTimeString()} (
-              {rzpStatus.last_successful_snapshot.payments_count} payments,{' '}
-              {rzpStatus.last_successful_snapshot.settlements_count} settlements)
-            </span>
-          )}
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleSyncRazorpay}
+            disabled={syncing}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-850 hover:bg-navy-800 border border-navy-700 text-xs font-semibold text-tsecondary hover:text-tprimary transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-brand-blue' : ''}`} />
+            <span>Sync Razorpay</span>
+          </button>
+
+          <button
+            onClick={onOpenReconcileModal}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-brand-blue hover:bg-brand-hover text-white text-xs font-semibold shadow-card transition-colors"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Run Reconciliation</span>
+          </button>
         </div>
       </div>
 
       {syncMessage && (
-        <div
-          className={`p-3 rounded-lg text-xs font-medium border ${
-            syncMessage.startsWith('✓')
-              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              : 'bg-amber-50 text-amber-800 border-amber-200'
-          }`}
-        >
-          {syncMessage}
+        <div className="p-3 rounded-lg bg-navy-850 border border-brand-blue/30 text-xs text-tsecondary font-mono flex items-center justify-between">
+          <span>{syncMessage}</span>
+          <button onClick={() => setSyncMessage(null)} className="text-tmuted hover:text-tprimary">✕</button>
         </div>
       )}
 
-      {/* HERO METRIC: UNRESOLVED FINANCIAL EXPOSURE */}
-      <div className="bg-gradient-to-r from-rose-900 via-rose-950 to-slate-900 text-white rounded-xl p-6 shadow-lg border border-rose-800/40">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                Primary Finance Controller Metric
+      {/* Hero Unresolved Exposure Metric Card */}
+      <div className="p-6 rounded-2xl bg-gradient-to-r from-navy-850 via-navy-800 to-navy-850 border border-navy-700 shadow-elevated relative overflow-hidden">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono uppercase tracking-wider text-status-review font-semibold">
+                Critical Metric: Financial Exposure Under Review
               </span>
-              <span className="text-xs text-rose-200 font-mono">
-                Source: {source === 'synthetic' ? 'Synthetic' : 'Razorpay Test'}
+              <span className="w-2 h-2 rounded-full bg-status-review animate-ping" />
+            </div>
+            <div className="text-3xl sm:text-4xl font-extrabold font-mono text-status-review tabular-nums">
+              {formatINR(unresolvedExposure)}
+            </div>
+            <p className="text-xs text-tmuted max-w-xl">
+              Cumulative gross transaction amount currently withheld by the Control Gate pending controller sign-off or exception investigation.
+            </p>
+          </div>
+
+          <div className="flex flex-row md:flex-col gap-3 text-right">
+            <div className="p-3 bg-navy-900/80 rounded-lg border border-navy-700">
+              <span className="text-[10px] font-mono uppercase text-tmuted block">High-Value Items (≥₹50k)</span>
+              <span className="text-base font-bold font-mono text-status-review tabular-nums">
+                {formatINR(highValExposure)}
               </span>
             </div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-rose-200">
-              Unresolved Financial Exposure
-            </h2>
-            <p className="text-4xl font-extrabold tracking-tight text-white mt-1">
-              {exposure ? formatINR(exposure.total_paise) : '₹0.00'}
-            </p>
-          </div>
-
-          <div className="flex flex-col md:items-end">
-            <button
-              onClick={handleRunReconciliation}
-              disabled={running}
-              className="bg-white text-slate-900 hover:bg-rose-50 font-bold px-5 py-2.5 rounded-lg text-xs shadow-md disabled:opacity-50 transition-all flex items-center gap-2"
-            >
-              <span>{running ? '⚙' : '🚀'}</span>
-              <span>{running ? 'Reconciling Ledger...' : `Reconcile ${source === 'synthetic' ? 'Synthetic' : 'Razorpay'} Batch`}</span>
-            </button>
-            {runResult && (
-              <span className="text-[11px] font-mono text-rose-200 mt-1.5">
-                {runResult.error
-                  ? `Error: ${runResult.error}`
-                  : `Run ${runResult.run_id}: ${runResult.cases_processed} txns in ${runResult.duration_ms}ms (${runResult.throughput} rec/s)`}
+            <div className="p-3 bg-navy-900/80 rounded-lg border border-navy-700">
+              <span className="text-[10px] font-mono uppercase text-tmuted block">Unresolved Cases</span>
+              <span className="text-base font-bold font-mono text-tprimary">
+                {formatNumber(reviewCount + exceptionCount)} records
               </span>
-            )}
-          </div>
-        </div>
-
-        {/* Sub-breakdown of Exposure */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-rose-800/60 text-xs">
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-xs">
-            <span className="text-rose-200 block text-[11px] uppercase">Manual Review Exposure</span>
-            <span className="font-mono text-base font-bold text-white">
-              {exposure ? formatINR(exposure.review_paise) : '₹0.00'}
-            </span>
-            <span className="text-[10px] text-rose-300 block mt-0.5">High-confidence or candidate ambiguity</span>
-          </div>
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-xs">
-            <span className="text-rose-200 block text-[11px] uppercase">Exception Discrepancies</span>
-            <span className="font-mono text-base font-bold text-white">
-              {exposure ? formatINR(exposure.exception_paise) : '₹0.00'}
-            </span>
-            <span className="text-[10px] text-rose-300 block mt-0.5">Missing settlement or waterfall delta</span>
-          </div>
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-xs">
-            <span className="text-rose-200 block text-[11px] uppercase">High-Value at Risk (≥ ₹50k)</span>
-            <span className="font-mono text-base font-bold text-amber-300">
-              {exposure ? formatINR(exposure.high_value_paise) : '₹0.00'}
-            </span>
-            <span className="text-[10px] text-rose-300 block mt-0.5">Mandatory Control Gate lock</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Reconciliation Pipeline KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Processed Records</span>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{dashboard?.processed ?? 0}</p>
-          <span className="text-[11px] text-slate-400">Total ledger transactions</span>
+      {/* 4-Column KPI Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Processed */}
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-2">
+          <div className="flex items-center justify-between text-tmuted">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Processed Volume</span>
+            <Activity className="w-4 h-4 text-tsecondary" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-tprimary tabular-nums">
+            {formatINR(totalVolume)}
+          </p>
+          <p className="text-[11px] font-mono text-tmuted">
+            {formatNumber(totalCount)} total transaction records
+          </p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Auto-Matched</span>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{dashboard?.matched ?? 0}</p>
-          <span className="text-[11px] text-emerald-700 font-medium">100% verified zero delta</span>
+
+        {/* Confirmed Reconciled */}
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-2">
+          <div className="flex items-center justify-between text-tmuted">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Confirmed Reconciled</span>
+            <CheckCircle2 className="w-4 h-4 text-status-matched" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-status-matched tabular-nums">
+            {formatINR(matchedVol)}
+          </p>
+          <p className="text-[11px] font-mono text-tmuted">
+            {formatNumber(matchedCount)} records • 0 paise delta
+          </p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Controller Review</span>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{dashboard?.review ?? 0}</p>
-          <span className="text-[11px] text-amber-700 font-medium">Safeguarded by Control Gate</span>
+
+        {/* Under Review */}
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-2">
+          <div className="flex items-center justify-between text-tmuted">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Under Controller Review</span>
+            <AlertTriangle className="w-4 h-4 text-status-review" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-status-review tabular-nums">
+            {formatINR(reviewVol)}
+          </p>
+          <p className="text-[11px] font-mono text-tmuted">
+            {formatNumber(reviewCount)} records awaiting human sign-off
+          </p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-rose-500">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Exceptions</span>
-          <p className="text-2xl font-bold text-rose-600 mt-1">{dashboard?.exceptions ?? 0}</p>
-          <span className="text-[11px] text-rose-700 font-medium">Actionable financial discrepancies</span>
+
+        {/* Critical Exceptions */}
+        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-2">
+          <div className="flex items-center justify-between text-tmuted">
+            <span className="text-[11px] font-mono uppercase tracking-wider">Critical Exceptions</span>
+            <AlertOctagon className="w-4 h-4 text-status-exception" />
+          </div>
+          <p className="text-2xl font-bold font-mono text-status-exception tabular-nums">
+            {formatINR(exceptionVol)}
+          </p>
+          <p className="text-[11px] font-mono text-tmuted">
+            {formatNumber(exceptionCount)} records with delta or anomaly
+          </p>
         </div>
       </div>
 
-      {/* 7-Day Cash Forecast Outlook */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+      {/* Financial Pipeline Flow Visual */}
+      <div className="p-5 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-navy-700">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
-              <span>📅</span> 7-Day Cash Liquidity Outlook
-            </h3>
-            <p className="text-xs text-slate-500">
-              Deterministic cash projection distinguishing Confirmed in Bank vs Expected Gateway Settlements (T+2).
+            <h3 className="text-sm font-bold text-tprimary">Autonomous Financial Architecture Flow</h3>
+            <p className="text-xs text-tmuted">
+              Decoupled semantic investigation and deterministic invariant control gate.
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1.5 font-medium text-emerald-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Confirmed Cash
-            </span>
-            <span className="flex items-center gap-1.5 font-medium text-indigo-700">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block" /> Expected Settlements
-            </span>
-          </div>
-        </div>
-
-        {forecast?.days ? (
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
-            {forecast.days.map((day: any, i: number) => (
-              <div
-                key={i}
-                className={`p-3 rounded-lg border text-xs flex flex-col justify-between ${
-                  day.day_offset === 0
-                    ? 'bg-emerald-50/60 border-emerald-200'
-                    : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <div>
-                  <span className="text-[11px] font-bold text-slate-700 block">
-                    {day.day_offset === 0 ? 'Today (Day 0)' : `+${day.day_offset} Days`}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono block">{day.date}</span>
-                </div>
-
-                <div className="my-2 space-y-1">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Confirmed:</span>
-                    <span className="font-mono font-bold text-emerald-700">
-                      {formatINR(day.confirmed_cash_paise)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block">Expected:</span>
-                    <span className="font-mono font-bold text-indigo-700">
-                      {formatINR(day.expected_settlement_paise)}
-                    </span>
-                  </div>
-                </div>
-
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase text-center ${
-                    day.confidence === 'CERTAIN'
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-indigo-100 text-indigo-800'
-                  }`}
-                >
-                  {day.confidence}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-400 italic">Calculating projection...</p>
-        )}
-      </div>
-
-      {/* Control Gate & System Health Panel */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
-              <span>🛡️</span> Financial Invariant Audit & System Health
-            </h3>
-            <p className="text-xs text-slate-500">
-              Continuously verifies that no mathematical or accounting rules are breached.
-            </p>
-          </div>
-          <span
-            className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${
-              health?.overall_status === 'HEALTHY'
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-amber-100 text-amber-800'
-            }`}
-          >
-            {health?.overall_status || 'HEALTHY'} ({health?.passed_checks || 7}/{health?.total_checks || 7} Checks Passed)
+          <span className="text-xs font-mono text-status-matched font-semibold">
+            CONTROL GATE VETO ACTIVE
           </span>
         </div>
 
-        {health?.checks ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-            {health.checks.map((chk: any, idx: number) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-100"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={chk.passed ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
-                    {chk.passed ? '✓' : '✗'}
-                  </span>
-                  <span className="font-medium text-slate-700">{chk.name}</span>
-                </div>
-                <span className="text-[11px] text-slate-500 font-mono">{chk.details}</span>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-xs font-mono">
+          <div className="p-3 bg-navy-900 rounded-lg border border-navy-700/80 space-y-1">
+            <span className="text-tmuted text-[10px] uppercase">1. Ingestion</span>
+            <p className="text-tprimary font-bold">Dual Source</p>
+            <p className="text-tmuted text-[11px]">Synthetic / Razorpay</p>
           </div>
-        ) : null}
+
+          <div className="p-3 bg-navy-900 rounded-lg border border-navy-700/80 space-y-1">
+            <span className="text-tmuted text-[10px] uppercase">2. Deterministic</span>
+            <p className="text-brand-blue font-bold">Exact & Normal</p>
+            <p className="text-tmuted text-[11px]">0 Paise Tolerance</p>
+          </div>
+
+          <div className="p-3 bg-navy-900 rounded-lg border border-navy-700/80 space-y-1">
+            <span className="text-tmuted text-[10px] uppercase">3. AI Copilot</span>
+            <p className="text-tprimary font-bold">Gemini 2.5</p>
+            <p className="text-tmuted text-[11px]">Investigate Ambiguity</p>
+          </div>
+
+          <div className="p-3 bg-navy-900 rounded-lg border border-status-review/30 space-y-1">
+            <span className="text-status-review text-[10px] uppercase">4. Control Gate</span>
+            <p className="text-status-review font-bold">7 Invariants</p>
+            <p className="text-tmuted text-[11px]">Vetoes Ambiguous Risk</p>
+          </div>
+
+          <div className="p-3 bg-navy-900 rounded-lg border border-status-matched/30 space-y-1">
+            <span className="text-status-matched text-[10px] uppercase">5. Output Ledger</span>
+            <p className="text-status-matched font-bold">Final Status</p>
+            <p className="text-tmuted text-[11px]">Matched/Review/Exception</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Ranked Exceptions Preview */}
+      <div className="p-5 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-navy-700">
+          <div>
+            <h3 className="text-sm font-bold text-tprimary">High-Exposure Exceptions Requiring Action</h3>
+            <p className="text-xs text-tmuted">
+              Prioritized by monetary exposure. Click any row to inspect complete waterfall and take controller action.
+            </p>
+          </div>
+          <span className="text-xs font-mono text-tmuted">
+            Ranked by Exposure DESC
+          </span>
+        </div>
+
+        {exceptions.length === 0 ? (
+          <p className="text-xs text-tmuted py-4 text-center">No active exceptions found for workspace {source}.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-navy-700 text-tmuted text-[10px] uppercase">
+                  <th className="py-2 px-3">Case ID</th>
+                  <th className="py-2 px-3">Payment ID</th>
+                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3 text-right">Exposure</th>
+                  <th className="py-2 px-3">Control Verdict</th>
+                  <th className="py-2 px-3 text-right">Audit</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-navy-700/50">
+                {exceptions.map((ex) => (
+                  <tr
+                    key={ex.case_id}
+                    onClick={() => onOpenCase(ex.case_id)}
+                    className="hover:bg-navy-800 cursor-pointer transition-colors group"
+                  >
+                    <td className="py-2.5 px-3 font-bold text-tprimary group-hover:text-brand-blue">
+                      {ex.case_id}
+                    </td>
+                    <td className="py-2.5 px-3 text-tsecondary">
+                      {ex.payment_id || '—'}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold border ${
+                        ex.status === 'REVIEW'
+                          ? 'bg-status-review/15 text-status-review border-status-review/30'
+                          : 'bg-status-exception/15 text-status-exception border-status-exception/30'
+                      }`}>
+                        {ex.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold text-status-review tabular-nums">
+                      {formatINR(ex.financial_impact)}
+                    </td>
+                    <td className="py-2.5 px-3 text-tsecondary">
+                      {ex.control_result || 'BLOCK'}
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <span className="text-[11px] text-brand-blue group-hover:underline flex items-center justify-end gap-1">
+                        Inspect <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

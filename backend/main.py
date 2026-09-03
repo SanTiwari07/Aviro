@@ -7,6 +7,7 @@ import hmac
 import hashlib
 import logging
 from typing import List, Optional
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
@@ -22,6 +23,7 @@ from .engine.control_gate import validate_match, decide_final_status
 from .engine.cash_forecast import calculate_cash_forecast
 from .engine.system_health import check_system_health
 from .ai.gemini import investigate_case, ask_arivo_grounded, format_inr
+from .ai.rag import query_rag, policy_retriever
 from .integrations.razorpay.client import RazorpayClient
 from .integrations.razorpay.sync import RazorpaySyncService
 import sys
@@ -61,7 +63,7 @@ def health_check(db: Session = Depends(database.get_db)):
     cases_count = db.query(database.ReconciliationCase).count()
     return {
         "status": "ok",
-        "service": "arivo-finance-controller",
+        "service": "arivo",
         "version": "2.0.0",
         "database": "connected",
         "cases_indexed": cases_count,
@@ -152,7 +154,25 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
     settlements: List[dict] = []
     sync_id = req.get("sync_id")
 
-    if source == "synthetic":
+    if "payments" in req and "settlements" in req:
+        payments = req.get("payments") or []
+        settlements = req.get("settlements") or []
+        for p in payments:
+            p["amount"] = int(p.get("amount", 0))
+            p.setdefault("source", source)
+            p.setdefault("source_record_id", p.get("payment_id"))
+        for s in settlements:
+            s["gross_amount"] = int(s.get("gross_amount", 0))
+            s["fees"] = int(s.get("fees", 0))
+            s["tax"] = int(s.get("tax", 0))
+            s["refunds"] = int(s.get("refunds", 0))
+            s["chargebacks"] = int(s.get("chargebacks", 0))
+            s["adjustments"] = int(s.get("adjustments", 0))
+            s["net_amount"] = int(s.get("net_amount", s["gross_amount"]))
+            s["unexplained_delta"] = int(s.get("unexplained_delta", 0))
+            s.setdefault("source", source)
+            s.setdefault("source_record_id", s.get("settlement_id"))
+    elif source == "synthetic":
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         data_dir = os.path.join(project_root, "dataset", "data")
         payments_path = os.path.join(data_dir, "payments.csv")
@@ -172,8 +192,58 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
             p["source_record_id"] = p["payment_id"]
         for s in settlements:
             s["gross_amount"] = int(s["gross_amount"])
+            s["fees"] = int(s.get("fees", 0))
+            s["tax"] = int(s.get("tax", 0))
+            s["refunds"] = int(s.get("refunds", 0))
+            s["chargebacks"] = int(s.get("chargebacks", 0))
+            s["adjustments"] = int(s.get("adjustments", 0))
+            s["net_amount"] = int(s.get("net_amount", s["gross_amount"]))
+            s["unexplained_delta"] = int(s.get("unexplained_delta", 0))
             s["source"] = "synthetic"
             s["source_record_id"] = s["settlement_id"]
+
+        # Persist synthetic payments and settlements if not already in SQLite
+        if payments and db.query(database.Payment).filter(database.Payment.source == "synthetic").count() == 0:
+            db_p_list = [
+                database.Payment(
+                    payment_id=p["payment_id"],
+                    order_id=p.get("order_id"),
+                    amount=p["amount"],
+                    currency=p.get("currency", "INR"),
+                    status=p.get("status", "captured"),
+                    created_at=str(p.get("created_at") or ""),
+                    source="synthetic",
+                    source_record_id=p["payment_id"],
+                    reference=p.get("reference"),
+                )
+                for p in payments
+            ]
+            db.bulk_save_objects(db_p_list)
+
+        if settlements and db.query(database.Settlement).filter(database.Settlement.source == "synthetic").count() == 0:
+            db_s_list = [
+                database.Settlement(
+                    settlement_id=s["settlement_id"],
+                    gross_amount=s["gross_amount"],
+                    fees=s["fees"],
+                    tax=s["tax"],
+                    refunds=s["refunds"],
+                    chargebacks=s["chargebacks"],
+                    adjustments=s["adjustments"],
+                    net_amount=s["net_amount"],
+                    currency=s.get("currency", "INR"),
+                    status=str(s.get("status") or "processed"),
+                    utr=s.get("utr"),
+                    created_at=str(s.get("created_at") or s.get("settled_at") or ""),
+                    payment_reference=s.get("payment_reference"),
+                    source="synthetic",
+                    source_record_id=s["settlement_id"],
+                    unexplained_delta=s["unexplained_delta"],
+                )
+                for s in settlements
+            ]
+            db.bulk_save_objects(db_s_list)
+        db.commit()
 
     elif source == "razorpay_test":
         db_payments = db.query(database.Payment).filter(database.Payment.source == "razorpay_test").all()
@@ -291,39 +361,64 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
         else:
             exception_count += 1
 
-        # Idempotent persistence by case_id
-        db_case = database.ReconciliationCase(
-            case_id=case_data["case_id"],
-            run_id=case_data["run_id"],
-            payment_id=case_data["payment_id"],
-            settlement_id=case_data.get("settlement_id"),
-            status=case_data["status"],
-            match_method=candidate.get("match_method"),
-            ai_confidence=case_data.get("ai_confidence"),
-            ai_recommendation=case_data.get("ai_recommendation"),
-            ai_summary=case_data.get("ai_summary"),
-            ai_evidence=case_data.get("ai_evidence"),
-            ai_reason=case_data.get("ai_reason"),
-            control_result=case_data["control_result"],
-            control_reasons=case_data.get("control_reasons"),
-            financial_impact=case_data["financial_impact"],
-            amount_delta=case_data.get("amount_delta", 0),
-            source=case_data["source"],
-            source_record_id=case_data.get("source_record_id"),
-            sync_id=case_data.get("sync_id"),
-            created_at=case_data["created_at"],
-        )
-        db.add(db_case)
+        # Idempotent persistence by unique case_id
+        existing_case = db.query(database.ReconciliationCase).filter(
+            database.ReconciliationCase.case_id == case_data["case_id"]
+        ).first()
+
+        if existing_case:
+            existing_case.run_id = case_data["run_id"]
+            existing_case.payment_id = case_data["payment_id"]
+            existing_case.settlement_id = case_data.get("settlement_id")
+            existing_case.status = case_data["status"]
+            existing_case.match_method = candidate.get("match_method")
+            existing_case.ai_confidence = case_data.get("ai_confidence")
+            existing_case.ai_recommendation = case_data.get("ai_recommendation")
+            existing_case.ai_summary = case_data.get("ai_summary")
+            existing_case.ai_evidence = case_data.get("ai_evidence")
+            existing_case.ai_reason = case_data.get("ai_reason")
+            existing_case.control_result = case_data["control_result"]
+            existing_case.control_reasons = case_data.get("control_reasons")
+            existing_case.financial_impact = case_data["financial_impact"]
+            existing_case.amount_delta = case_data.get("amount_delta", 0)
+            existing_case.source = case_data["source"]
+            existing_case.source_record_id = case_data.get("source_record_id")
+            existing_case.sync_id = case_data.get("sync_id")
+            existing_case.created_at = case_data["created_at"]
+        else:
+            db_case = database.ReconciliationCase(
+                case_id=case_data["case_id"],
+                run_id=case_data["run_id"],
+                payment_id=case_data["payment_id"],
+                settlement_id=case_data.get("settlement_id"),
+                status=case_data["status"],
+                match_method=candidate.get("match_method"),
+                ai_confidence=case_data.get("ai_confidence"),
+                ai_recommendation=case_data.get("ai_recommendation"),
+                ai_summary=case_data.get("ai_summary"),
+                ai_evidence=case_data.get("ai_evidence"),
+                ai_reason=case_data.get("ai_reason"),
+                control_result=case_data["control_result"],
+                control_reasons=case_data.get("control_reasons"),
+                financial_impact=case_data["financial_impact"],
+                amount_delta=case_data.get("amount_delta", 0),
+                source=case_data["source"],
+                source_record_id=case_data.get("source_record_id"),
+                sync_id=case_data.get("sync_id"),
+                created_at=case_data["created_at"],
+            )
+            db.add(db_case)
 
     elapsed_ms = (time.time() - start_time) * 1000
     throughput = round(len(cases_data) / max(0.001, elapsed_ms / 1000), 1)
 
     # Record ReconciliationRun
+    run_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     db_run = database.ReconciliationRun(
         run_id=run_id,
         source=source,
         sync_id=sync_id,
-        timestamp=case_data["created_at"],
+        timestamp=run_timestamp,
         records_processed=len(cases_data),
         matched=matched_count,
         review=review_count,
@@ -343,6 +438,8 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
         "run_id": run_id,
         "source": source,
         "cases_processed": len(cases_data),
+        "cases_saved": len(cases_data),
+        "total_cases": len(cases_data),
         "matched": matched_count,
         "review": review_count,
         "exception": exception_count,
@@ -438,6 +535,7 @@ def get_dashboard(source: Optional[str] = None, db: Session = Depends(database.g
 # ---------------------------------------------------------
 
 @app.get("/api/reconciliation")
+@app.get("/api/cases")
 def list_reconciliation(
     source: Optional[str] = None,
     status: Optional[str] = None,
@@ -500,6 +598,10 @@ def get_case_detail(case_id: str, db: Session = Depends(database.get_db)):
             "source_record_id": c.source_record_id,
             "sync_id": c.sync_id,
             "created_at": c.created_at,
+            "resolved_by": c.resolved_by,
+            "resolution_action": c.resolution_action,
+            "resolution_notes": c.resolution_notes,
+            "resolved_at": c.resolved_at,
         },
         "payment": {
             "payment_id": payment.payment_id if payment else c.payment_id,
@@ -537,6 +639,55 @@ def get_case_detail(case_id: str, db: Session = Depends(database.get_db)):
             "verdict": c.control_result or "PASS",
             "reasons": control_reasons_list,
         },
+    }
+
+
+@app.post("/api/reconciliation/{case_id}/resolve")
+def resolve_case(case_id: str, payload: dict, db: Session = Depends(database.get_db)):
+    """
+    Authoritative controller resolution endpoint.
+    Allows certified human finance controllers to resolve ambiguous or exception cases.
+    Actions: APPROVED (overrides to MATCHED), REJECTED (confirms EXCEPTION), ESCALATED (retains REVIEW with notes).
+    """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid request body.")
+
+    raw_action = str(payload.get("action") or "").upper().strip()
+    if raw_action not in ["APPROVED", "REJECTED", "ESCALATED"]:
+        raise HTTPException(status_code=400, detail="Action must be APPROVED, REJECTED, or ESCALATED.")
+
+    c = db.query(database.ReconciliationCase).filter_by(case_id=case_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Reconciliation case not found")
+
+    user = str(payload.get("user") or "Finance Controller").strip()
+    notes = str(payload.get("notes") or "").strip()
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    c.resolved_by = user
+    c.resolution_action = raw_action
+    c.resolution_notes = notes
+    c.resolved_at = now_str
+
+    if raw_action == "APPROVED":
+        c.status = "MATCHED"
+    elif raw_action == "REJECTED":
+        c.status = "EXCEPTION"
+    elif raw_action == "ESCALATED":
+        c.status = "REVIEW"
+
+    db.commit()
+    db.refresh(c)
+    logger.info(f"[resolve] Case {case_id} resolved as {raw_action} by {user}")
+
+    return {
+        "status": "success",
+        "case_id": c.case_id,
+        "new_status": c.status,
+        "resolved_by": c.resolved_by,
+        "resolution_action": c.resolution_action,
+        "resolution_notes": c.resolution_notes,
+        "resolved_at": c.resolved_at,
     }
 
 
@@ -683,21 +834,51 @@ def get_benchmark():
 
 
 # ---------------------------------------------------------
-# Grounded Ask Arivo & Webhooks
+# Grounded Ask Arivo & Policies Knowledge Base
 # ---------------------------------------------------------
+
+@app.get("/api/policies")
+def list_policies():
+    """
+    Returns indexed finance controller governance policies and section summaries for RAG audit.
+    """
+    policies_map = {}
+    for ch in policy_retriever.chunks:
+        if ch.doc_name not in policies_map:
+            policies_map[ch.doc_name] = {
+                "doc_name": ch.doc_name,
+                "policy_name": ch.policy_name,
+                "version": ch.version,
+                "sections": [],
+            }
+        if ch.section not in policies_map[ch.doc_name]["sections"]:
+            policies_map[ch.doc_name]["sections"].append(ch.section)
+
+    return {
+        "status": "success",
+        "total_policies": len(policies_map),
+        "total_chunks": len(policy_retriever.chunks),
+        "policies": list(policies_map.values()),
+    }
+
 
 @app.post("/api/ask")
 def ask(payload: dict, db: Session = Depends(database.get_db)):
     """
-    Answers natural-language finance questions grounded strictly on verified database records.
-    Returns real figures and clickable evidence references.
+    Real RAG Ask Arivo endpoint:
+    Grounded strictly on verified database records + retrieved policy knowledge base.
+    Returns: answer, records, referenced_records, policies, classification, recommended_actions.
     """
-    question = payload.get("question", "").strip()
-    if not question:
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+
+    raw_question = payload.get("question")
+    if not raw_question or not isinstance(raw_question, str) or not raw_question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-    logger.info(f"[ask] grounded question: {question[:80]}")
-    res = ask_arivo_grounded(question, db)
+    question = raw_question.strip()
+    logger.info(f"[ask] RAG question: {question[:80]}")
+    res = query_rag(question, db)
     return res
 
 
