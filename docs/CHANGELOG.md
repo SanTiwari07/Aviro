@@ -1,46 +1,58 @@
 # Changelog
 
-All notable changes and bug fixes made to the Arivo codebase.
+All notable changes, architectural upgrades, and bug fixes made to the ARIVO codebase.
 
 ---
 
-## [Current Audit & Fix Release] - 2026-09-02
+## [Track 04 Major Upgrade — AI Finance Controller] - 2026-09-03
+*Razorpay AI Buildathon 2026 — Track 04 Implementation*
+
+### Added
+- **Live Razorpay Test-Mode Integration**:
+  - `backend/integrations/razorpay/client.py`: Server-side HTTP Basic Auth client with standard library `urllib`, pagination (`fetch_payments`, `fetch_settlements`), socket timeouts, and rate-limit backoff.
+  - `backend/integrations/razorpay/normalizer.py`: Normalizes raw payloads into strictly typed minor units (paise integers), ISO 8601 UTC timestamps, and validates the settlement waterfall arithmetic:
+    $$\text{Gross} - \text{Fees} - \text{Tax} - \text{Refunds} - \text{Chargebacks} + \text{Adjustments} = \text{Net}$$
+  - `backend/integrations/razorpay/sync.py`: Sync lifecycle manager (`SYNC -> VALIDATION -> SNAPSHOT -> PERSISTENCE`) that automatically preserves the **Last-Known-Good Snapshot** upon upstream API failure.
+  - `backend/integrations/razorpay/errors.py`: Strongly-typed error hierarchy (`RazorpayAuthError`, `RazorpayRateLimitError`, `RazorpayTimeoutError`, `RazorpayNetworkError`, `RazorpayAPIError`, `RazorpayNormalizationError`).
+- **Database Architecture Evolution**:
+  - `SyncRecord` table: Tracks sync snapshots, item counts, durations, and status.
+  - `ReconciliationRun` table: Logs run history, duration, throughput, and AI invocation stats.
+  - Data Provenance Columns: Added `source`, `source_record_id`, `sync_id`, `fee`, `tax`, `method`, `utr`, `unexplained_delta`, `amount_delta`, `control_reasons` to `Payment`, `Settlement`, and `ReconciliationCase`.
+  - Non-destructive SQLite migration helper `_ensure_sqlite_columns()` applying schema additions safely without dropping existing tables.
+- **Deterministic 7-Day Cash Forecast Engine**:
+  - `backend/engine/cash_forecast.py`: Generates 7-day cash outlook based on Indian banking T+2 settlement lag models, strictly separating Confirmed Cash (in bank) from Expected Settlements (pipeline) and Unresolved Exposure.
+- **Continuous System Integrity Monitor**:
+  - `backend/engine/system_health.py`: Validates 7 core financial invariants (Population conservation, waterfall arithmetic, duplicate allocation, currency uniformity, high-value protection, unexplained delta, and AI schema validity).
+- **Grounded AI Copilot ("Ask Arivo")**:
+  - `backend/ai/gemini.py:ask_arivo_grounded()`: Performs entity extraction against database ledgers, supplying verified facts to Gemini with zero hallucination, plus deterministic rule-based fallback.
+- **Expanded Test Suite**:
+  - 21 unit and integration tests across `test_reconciliation.py`, `test_razorpay_client.py`, `test_normalizer.py`, `test_cash_forecast.py`, and `test_adversarial.py`.
+- **Flagship AI Safety Demo**:
+  - Embedded in benchmark and frontend: Record `PAY_FLAGSHIP_001` (₹6,00,000) where Gemini confidence is 97% MATCH, but the Authoritative Control Gate issues a veto BLOCK enforcing REVIEW ("The AI is confident. The system is not.").
+- **Frontend Overhaul**:
+  - Full Evidence Drawer (`EvidenceDrawer.tsx`) with waterfall breakdown and audit reasons.
+  - Active Data Environment toggle (`Synthetic Benchmark` vs `Razorpay Test Mode`).
+  - Hero Card: **Unresolved Financial Exposure** with sub-breakdown.
+  - 7-Day Cash Forecast timeline cards.
+  - Financial Invariant Health panel.
+  - Ranked Exception Ledger with RFC 4180 CSV export.
+  - Interactive Settlement Batches viewer.
+  - Historical Reconciliation Runs view (`Runs.tsx`).
+  - Controlled Benchmark & AI Safety showcase (`Benchmark.tsx`).
+  - Grounded Copilot chat with suggested prompt chips and clickable evidence chips.
 
 ### Fixed
-- **Python 3.13 Wheel Build Failures**: Removed strict version pinning (`pydantic==2.6.3`, `fastapi==0.110.0`, `uvicorn==0.27.1`) in `backend/requirements.txt` that failed to compile on Python 3.13 due to lack of pre-built Rust/maturin wheels. Replaced with compatible `>=` constraints.
-- **Deprecated Gemini SDK**: Replaced end-of-life `google-generativeai==0.4.1` package with the modern official `google-genai` SDK in `backend/requirements.txt` and `backend/ai/gemini.py`.
-- **Control Gate Bug**: Fixed critical string mismatch in `backend/engine/control_gate.py` where the function checked for `"MATCH"` instead of `"MATCHED"`, causing AI recommendations to be silently ignored.
-- **Database URL Path Conflict**: Removed relative `DATABASE_URL=sqlite:///./arivo.db` from `.env` that conflicted with absolute path resolution in `backend/database.py`.
-- **Absolute Module Imports**: Changed absolute `from backend import ...` imports in `backend/main.py` and `evaluation/benchmark.py` to relative/sys.path imports, preventing `ModuleNotFoundError` when starting the server from different directories.
-- **Double Evidence Nesting**: Cleaned up evidence payload passed to `investigate_case` in `backend/main.py` to provide flat, unpolluted data to the Gemini prompt.
-- **Hardcoded Frontend URLs**: Replaced hardcoded `http://localhost:8000` URLs across all React pages with a centralized `apiFetch` wrapper in `frontend/src/api.ts` and configured a Vite reverse proxy in `frontend/vite.config.ts`.
-- **Mock Cash Position**: Replaced hardcoded dummy figures in `frontend/src/pages/Overview.tsx` with live database aggregation calculations in `/api/dashboard`.
-- **Interactive UI Trigger**: Added a "Run Reconciliation" button on the Overview page so users can initiate a run directly from the browser without CLI scripts.
+- Fixed Windows runner `%PATH%` executable shim by creating `powershell.cmd`.
+- Fixed Windows CP1252 stdout encoding in `benchmark.py` by reconfiguring stdout to UTF-8.
+- Fixed duplicate settlement allocation in reconciliation matching engine.
+- Fixed missing `tsconfig.json` and Vite client types in frontend.
 
-### Documentation
-- Created complete documentation suite under `/docs`:
-  - `docs/README.md`
-  - `docs/PROJECT_OVERVIEW.md`
-  - `docs/ARCHITECTURE.md`
-  - `docs/SETUP.md`
-  - `docs/ENVIRONMENT.md`
-  - `docs/API.md`
-  - `docs/API_ENDPOINTS.md`
-  - `docs/DATABASE.md`
-  - `docs/AI.md`
-  - `docs/RAZORPAY.md`
-  - `docs/FRONTEND.md`
-  - `docs/BACKEND.md`
-  - `docs/AUTHENTICATION.md`
-  - `docs/WEBHOOKS.md`
-  - `docs/ERROR_HANDLING.md`
-  - `docs/TESTING.md`
-  - `docs/DEBUGGING.md`
-  - `docs/DEPLOYMENT.md`
-  - `docs/SECURITY.md`
-  - `docs/TROUBLESHOOTING.md`
-  - `docs/DEVELOPMENT.md`
-  - `docs/CHANGELOG.md`
+---
 
-### Testing
-- Added comprehensive unit tests in `backend/tests/test_reconciliation.py` covering exact match, amount mismatch, control gate blocking high-value transactions, AI MATCHED pass path, and AI EXCEPTION path.
+## [Initial Audit & Fix Release] - 2026-09-02
+
+### Fixed
+- Removed strict Python wheel pinning in `backend/requirements.txt` for Python 3.13 compatibility.
+- Replaced deprecated `google-generativeai` package with modern `google-genai` SDK.
+- Fixed string comparison bug in `backend/engine/control_gate.py` (`"MATCH"` -> `"MATCHED"`).
+- Resolved database URL conflicts and module import errors.

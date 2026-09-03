@@ -1,234 +1,205 @@
-# API Endpoints Reference
+# ARIVO — Complete API Endpoints Reference
 
-This reference is generated from the actual backend implementation in `backend/main.py`.
+All endpoints are hosted by FastAPI at `http://localhost:8000` and proxied through Vite at `http://localhost:5173/api/*`.
 
 ---
 
-## 1. GET `/api/health`
+## 1. System & Ingestion Endpoints
 
-### Purpose
-Health check endpoint to verify that the FastAPI backend server is alive and responding.
+### `GET /api/health`
+- **Purpose**: Liveness probe for backend server.
+- **Response**: `{"status": "ok", "service": "arivo"}`
 
-### Authentication
-None
-
-### Request
-No headers or body required.
-
-```http
-GET /api/health HTTP/1.1
-Host: localhost:8000
-```
-
-### Response
+### `GET /api/razorpay/status`
+- **Purpose**: Diagnostics on Razorpay test-mode API configuration, credential presence, and live connection test.
+- **Response**:
 ```json
 {
-  "status": "ok",
-  "service": "arivo"
+  "is_configured": true,
+  "key_id_preview": "rzp_test_mock...",
+  "connection": {
+    "status": "AUTHENTICATED",
+    "latency_ms": 142
+  },
+  "last_successful_snapshot": {
+    "sync_id": "SYNC_20260903_120000",
+    "completed_at": "2026-09-03T12:00:00Z",
+    "payments_count": 50,
+    "settlements_count": 50
+  }
 }
 ```
 
-### Errors
-None anticipated under normal operation.
-
-### Implementation
-- Route: `backend/main.py:health_check`
-
-### Example
-```bash
-curl -X GET http://localhost:8000/api/health
+### `POST /api/razorpay/sync`
+- **Purpose**: Triggers real-time ingestion from Razorpay API. Executes `SYNC -> VALIDATION -> SNAPSHOT -> PERSISTENCE`.
+- **Response**:
+```json
+{
+  "status": "SUCCESS",
+  "sync_id": "SYNC_20260903_120100",
+  "payments_fetched": 50,
+  "settlements_fetched": 50,
+  "completed_at": "2026-09-03T12:01:05Z"
+}
 ```
+
+### `GET /api/sync/latest`
+- **Purpose**: Returns the most recent sync metadata and record counts.
+- **Response**: Latest `SyncRecord` JSON.
+
+### `POST /api/webhooks/razorpay`
+- **Purpose**: Webhook listener for incoming Razorpay lifecycle events. Verifies `X-Razorpay-Signature` HMAC.
+- **Response**: `{"status": "received"}`
 
 ---
 
-## 2. GET `/api/dashboard`
+## 2. Core Reconciliation Endpoints
 
-### Purpose
-Retrieves aggregate operational statistics and financial totals across all processed reconciliation cases in SQLite.
-
-### Authentication
-None
-
-### Request
-```http
-GET /api/dashboard HTTP/1.1
-Host: localhost:8000
-```
-
-### Response
+### `POST /api/reconciliation/run`
+- **Purpose**: Executes reconciliation cycle across payments and settlements for the specified source.
+- **Request Body** (optional): `{"source": "synthetic"}` or `{"source": "razorpay_test"}`
+- **Response**:
 ```json
 {
-  "processed": 4985,
-  "matched": 4120,
-  "review": 645,
-  "exceptions": 220,
+  "run_id": "RUN_9A2F8B1C",
+  "source": "synthetic",
+  "cases_processed": 5114,
+  "cases_saved": 5114,
+  "matched": 3500,
+  "review": 1280,
+  "exceptions": 334,
+  "duration_ms": 427,
+  "throughput": 11960.7
+}
+```
+
+### `GET /api/dashboard`
+- **Purpose**: Dashboard summary metrics including hero **Unresolved Financial Exposure** breakdown.
+- **Query Params**: `?source=synthetic` or `?source=razorpay_test`
+- **Response**:
+```json
+{
+  "processed": 5114,
+  "matched": 3500,
+  "review": 1280,
+  "exceptions": 334,
+  "unresolved_exposure": {
+    "total_paise": 41642666,
+    "review_paise": 24500000,
+    "exception_paise": 17142666,
+    "high_value_paise": 12500000
+  },
   "cash_position": {
-    "expected": 249250000,
-    "settled": 206000000,
-    "unexplained": 43250000
+    "expected": 150000000,
+    "settled": 108357334,
+    "unexplained": 120000
   }
 }
 ```
-*Note: Monetary values in `cash_position` are stored in minor currency units (paise).*
 
-### Errors
-* `500 Internal Server Error`: Database query failure or SQLite read error.
+### `GET /api/reconciliation`
+- **Purpose**: Paginated ledger of reconciliation records with multi-filter and search capability.
+- **Query Params**: `?source=all&status=all&search=PAY_123&limit=100&offset=0`
+- **Response**: Array of `ReconciliationCase` items with provenance, control results, and AI summaries.
 
-### Implementation
-- Route: `backend/main.py:get_dashboard`
-- Database access: Queries `reconciliation_cases` table using SQLAlchemy aggregations (`func.sum`, `.count()`).
-
-### Example
-```bash
-curl -X GET http://localhost:8000/api/dashboard
-```
+### `GET /api/reconciliation/{case_id}`
+- **Purpose**: Detailed case view including raw payment details, linked settlement waterfall, AI audit reasoning, and Control Gate checks.
+- **Response**: Full case evidentiary object.
 
 ---
 
-## 3. POST `/api/reconciliation/run`
+## 3. Exceptions & Settlement Batches
 
-### Purpose
-Triggers an end-to-end reconciliation run over the payments and settlements dataset located in `dataset/data/`. Runs deterministic matching, calls Gemini AI on ambiguous cases, validates against Control Gate rules, and upserts cases to the database.
+### `GET /api/exceptions`
+- **Purpose**: Returns ranked exception ledger ordered by highest financial exposure (`financial_impact DESC`).
+- **Query Params**: `?source=synthetic`
+- **Response**: Array of exception and review cases.
 
-### Authentication
-None
+### `GET /api/exceptions/export`
+- **Purpose**: Generates and downloads a clean RFC 4180 CSV export of all unresolved exceptions.
+- **Response Header**: `Content-Disposition: attachment; filename=arivo_exceptions_export.csv`
 
-### Request
-```http
-POST /api/reconciliation/run HTTP/1.1
-Host: localhost:8000
-Content-Type: application/json
-```
+### `GET /api/settlements`
+- **Purpose**: Lists settlement batches with computed waterfall columns (`gross`, `fees`, `tax`, `net`, `unexplained_delta`).
+- **Response**: Array of settlement batch records.
 
-### Response
-```json
-{
-  "status": "success",
-  "cases_processed": 5000,
-  "cases_saved": 5000
-}
-```
-
-### Errors
-* `400 Bad Request`: If `dataset/data/payments.csv` or `dataset/data/settlements.csv` does not exist.
-  ```json
-  {
-    "detail": "Dataset not found. Run: make generate-data"
-  }
-  ```
-* `500 Internal Server Error`: Parsing error or database commit error.
-
-### Implementation
-- Route: `backend/main.py:start_reconciliation`
-- Engine: `backend/engine/reconciliation.py:run_reconciliation`
-- AI Investigator: `backend/ai/gemini.py:investigate_case`
-- Control Gate: `backend/engine/control_gate.py:validate_match`, `decide_final_status`
-
-### Example
-```bash
-curl -X POST http://localhost:8000/api/reconciliation/run
-```
+### `GET /api/settlements/{settlement_id}`
+- **Purpose**: Detailed single settlement batch view with associated reconciliation records.
+- **Response**: Settlement batch record + linked transactions.
 
 ---
 
-## 4. GET `/api/reconciliation`
+## 4. Financial Intelligence, Health & Copilot
 
-### Purpose
-Retrieves a list of reconciliation cases ordered by most recent first, with optional pagination limit.
-
-### Authentication
-None
-
-### Parameters
-| Query Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `limit` | integer | No | 100 | Maximum number of cases to return |
-
-### Request
-```http
-GET /api/reconciliation?limit=200 HTTP/1.1
-Host: localhost:8000
-```
-
-### Response
+### `GET /api/forecast`
+- **Purpose**: Deterministic 7-day cash forecast distinguishing Confirmed Cash (in bank) from Expected Settlements (T+2 pipeline).
+- **Response**:
 ```json
-[
-  {
-    "id": 1,
-    "case_id": "CASE_9D20A14B",
-    "run_id": "RUN_E7412A90",
-    "payment_id": "PAY_1001",
-    "settlement_id": "SET_2004",
-    "bank_txn_id": null,
-    "status": "MATCHED",
-    "match_method": "EXACT_ID",
-    "ai_confidence": null,
-    "ai_recommendation": null,
-    "control_result": "PASS",
-    "financial_impact": 50000,
-    "created_at": "2026-09-02T16:45:00.000Z"
-  }
-]
-```
-
-### Errors
-* `422 Unprocessable Entity`: If `limit` is not an integer.
-* `500 Internal Server Error`: Database read error.
-
-### Implementation
-- Route: `backend/main.py:list_reconciliation`
-- Model: `backend/database.py:ReconciliationCase`
-
-### Example
-```bash
-curl -X GET "http://localhost:8000/api/reconciliation?limit=50"
-```
-
----
-
-## 5. POST `/api/ask`
-
-### Purpose
-Interactive AI copilot endpoint. Answers natural language queries regarding reconciliation policy, edge-case rationale, or financial controls using Gemini grounded on predefined controller policy.
-
-### Authentication
-None
-
-### Request
-```http
-POST /api/ask HTTP/1.1
-Host: localhost:8000
-Content-Type: application/json
-
 {
-  "question": "Why are unexplained deltas routed to exception?"
+  "confirmed_cash": 108357334,
+  "expected_settlements": 41642666,
+  "days": [
+    {
+      "day_offset": 0,
+      "date": "2026-09-03",
+      "label": "Today",
+      "confirmed_cash_paise": 108357334,
+      "expected_settlement_paise": 0,
+      "confidence": "CERTAIN"
+    }
+  ],
+  "methodology": "Deterministic T+2 settlement lag modeling using captured payments and staged batches."
 }
 ```
 
-### Response
+### `GET /api/health/controls`
+- **Purpose**: Continuous integrity monitor validating 7 financial invariants (conservation, waterfall arithmetic, duplicate allocation, currency consistency, high-value protection, unexplained delta, and AI schema).
+- **Response**:
 ```json
 {
-  "answer": "According to ARIVO policy, unexplained deltas represent potential financial discrepancies that cannot be automatically cleared. They must always be routed to EXCEPTION to ensure manual inspection by the finance team and prevent unverified financial write-offs."
+  "overall_status": "HEALTHY",
+  "passed_checks": 7,
+  "total_checks": 7,
+  "checks": [
+    {"name": "Population Conservation", "passed": true, "details": "All captured payments accounted for"},
+    {"name": "Settlement Waterfall Balance", "passed": true, "details": "Gross - Fees - Tax = Net verified"}
+  ]
 }
 ```
 
-### Errors
-* `400 Bad Request`: If question is empty or whitespace only.
-  ```json
-  {
-    "detail": "Question cannot be empty."
+### `GET /api/runs`
+- **Purpose**: Historical audit log of reconciliation runs with duration, throughput, and AI stats.
+- **Response**: Array of `ReconciliationRun` records.
+
+### `GET /api/benchmark`
+- **Purpose**: Returns benchmark comparison (Baseline vs ARIVO) and Flagship AI Safety Demo payload.
+- **Response**:
+```json
+{
+  "throughput": 11960.7,
+  "baseline": {"precision": 72.86, "recall": 100.0, "false_matches": 1323},
+  "arivo": {"precision": 70.83, "recall": 91.52, "false_matches": 0},
+  "flagship_demo": {
+    "record_id": "PAY_FLAGSHIP_001",
+    "amount_paise": 60000000,
+    "gemini_confidence": 0.97,
+    "gemini_recommendation": "MATCHED",
+    "control_gate_verdict": "BLOCK",
+    "final_status": "REVIEW",
+    "safety_takeaway": "The AI is confident. The system is not."
   }
-  ```
-* `422 Unprocessable Entity`: If request JSON is malformed or missing the `question` key.
-* `500 Internal Server Error`: Upstream failure or missing Gemini credentials (returns safe error message in response body).
+}
+```
 
-### Implementation
-- Route: `backend/main.py:ask`
-- AI client: `backend/ai/gemini.py:ask_arivo`
-
-### Example
-```bash
-curl -X POST http://localhost:8000/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What is the threshold for high value transactions?"}'
+### `POST /api/ask`
+- **Purpose**: Grounded AI Copilot. Queries SQLite ledger and passes verified facts to Gemini.
+- **Request Body**: `{"question": "How much money is currently unresolved?"}`
+- **Response**:
+```json
+{
+  "answer": "Current unresolved financial exposure is ₹41,64,266.00 across 1,614 transactions...",
+  "referenced_records": [
+    {"id": "PAY_FLAGSHIP_001", "type": "payment", "status": "REVIEW"}
+  ]
+}
 ```

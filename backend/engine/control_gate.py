@@ -27,11 +27,9 @@ def validate_match(candidate: Dict[str, Any]) -> Dict[str, Any]:
         reasons.append("Multiple candidate settlements.")
 
     if candidate.get("high_value", False):
-        # If high-value has any ambiguity or missing exact ID, block
+        reasons.append("High-value transaction.")
         if candidate.get("conflicting_evidence", False) or candidate.get("multiple_candidates", False):
             reasons.append("High-value transaction with candidate ambiguity.")
-        elif candidate.get("match_method") != "EXACT_ID":
-            reasons.append("High-value transaction without exact identifier.")
 
     if candidate.get("conflicting_evidence", False):
         reasons.append("Conflicting evidence detected.")

@@ -46,6 +46,8 @@ class PaymentNormalizer:
             raise RazorpayNormalizationError(f"Payment {pay_id} has invalid amount: {raw_amount} ({err})")
 
         currency = str(raw.get("currency", "INR")).upper()
+        if currency != "INR":
+            raise RazorpayNormalizationError(f"Unsupported currency: {currency}. ARIVO operates strictly in INR.")
         status = str(raw.get("status", "CAPTURED")).upper()
         created_at = _epoch_to_iso(raw.get("created_at"))
 
@@ -69,6 +71,11 @@ class PaymentNormalizer:
             "tax": int(raw.get("tax") or 0),
             "method": raw.get("method"),
         }
+
+    @classmethod
+    def normalize(cls, raw: Dict[str, Any], sync_id: str = "SYNC_DEFAULT") -> Dict[str, Any]:
+        """Convenience alias for normalize_single."""
+        return cls.normalize_single(raw, sync_id)
 
     @classmethod
     def normalize_batch(
@@ -154,6 +161,11 @@ class SettlementNormalizer:
             "utr": utr,
             "unexplained_delta": unexplained_delta,
         }
+
+    @classmethod
+    def normalize(cls, raw: Dict[str, Any], sync_id: str = "SYNC_DEFAULT") -> Dict[str, Any]:
+        """Convenience alias for normalize_single."""
+        return cls.normalize_single(raw, sync_id)
 
     @classmethod
     def normalize_batch(

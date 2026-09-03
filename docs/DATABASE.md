@@ -1,20 +1,48 @@
 # Database Schema & Storage
 
-Arivo uses SQLite via SQLAlchemy ORM for local persistent storage.
+ARIVO uses SQLite via SQLAlchemy ORM for local persistent storage with deterministic minor currency units (paise) and non-destructive column evolution.
 
-## Database Technology
+## 1. Engine & Configuration
 
 - **Engine**: SQLite 3
 - **ORM**: SQLAlchemy (Declarative Base)
 - **File Location**: `arivo.db` at project root
 - **Connection**: Managed in `backend/database.py` with `check_same_thread: False`
+- **Integer Minor Units**: All monetary values (`amount`, `gross_amount`, `net_amount`, `fee`, `tax`, `financial_impact`, `unexplained_delta`) are stored strictly as minor unit integers (paise).
 
 ---
 
-## Entity Relationship & Schema
+## 2. Entity Relationship Diagram
 
 ```mermaid
 erDiagram
+    SYNC_RECORDS {
+        int id PK
+        string sync_id UK
+        string provider
+        string status
+        int payments_count
+        int settlements_count
+        int duration_ms
+        string error_message
+        string completed_at
+    }
+
+    RECONCILIATION_RUNS {
+        int id PK
+        string run_id UK
+        string source
+        int cases_processed
+        int cases_saved
+        int matched_count
+        int review_count
+        int exception_count
+        int duration_ms
+        float throughput
+        int ai_invocations
+        string created_at
+    }
+
     PAYMENTS {
         int id PK
         string payment_id UK
@@ -25,6 +53,12 @@ erDiagram
         string status
         string created_at
         string reference
+        string source
+        string source_record_id
+        string sync_id
+        int fee
+        int tax
+        string method
     }
 
     SETTLEMENTS {
@@ -42,6 +76,11 @@ erDiagram
         string status
         string created_at
         string payment_reference
+        string source
+        string source_record_id
+        string sync_id
+        string utr
+        int unexplained_delta
     }
 
     RECONCILIATION_CASES {
@@ -58,74 +97,29 @@ erDiagram
         string control_result
         int financial_impact
         string created_at
+        string source
+        string source_record_id
+        string sync_id
+        int amount_delta
+        string control_reasons
+        string ai_summary
+        string ai_evidence
+        string ai_reason
     }
+
+    SYNC_RECORDS ||--o{ PAYMENTS : generates
+    SYNC_RECORDS ||--o{ SETTLEMENTS : generates
+    RECONCILIATION_RUNS ||--o{ RECONCILIATION_CASES : contains
+    PAYMENTS ||--o| RECONCILIATION_CASES : reconciled_in
+    SETTLEMENTS ||--o| RECONCILIATION_CASES : reconciled_in
 ```
 
 ---
 
-## Model Definitions
+## 3. Non-Destructive Migrations (`_ensure_sqlite_columns`)
 
-### 1. `reconciliation_cases`
-Main operational audit table recording the reconciliation decisions.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer | PK, Index | Auto-increment primary key |
-| `case_id` | String | Unique, Index | Unique case identifier (e.g. `CASE_A1B2C3D4`) |
-| `run_id` | String | Index | Batch run identifier (e.g. `RUN_F9E8D7C6`) |
-| `payment_id` | String | Nullable, Index | Associated payment ID |
-| `settlement_id` | String | Nullable, Index | Associated settlement ID |
-| `bank_txn_id` | String | Nullable | Associated bank statement transaction ID |
-| `status` | String | Non-null | Final status: `MATCHED`, `REVIEW`, or `EXCEPTION` |
-| `match_method` | String | Nullable | Method used (`EXACT_ID`, `AMOUNT_DATE`, `MULTIPLE`, `NO_MATCH`) |
-| `ai_confidence` | Float | Nullable | Gemini confidence score between `0.0` and `1.0` |
-| `ai_recommendation` | String | Nullable | Recommendation from Gemini (`MATCHED`, `REVIEW`, `EXCEPTION`) |
-| `control_result` | String | Nullable | Control Gate verdict (`PASS` or `BLOCK`) |
-| `financial_impact` | Integer | Default 0 | Transaction amount in minor units (paise) |
-| `created_at` | String | Non-null | ISO 8601 UTC timestamp |
-
-### 2. `payments`
-Schema representing ingested payment gateway records.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer | PK, Index | Auto-increment primary key |
-| `payment_id` | String | Unique, Index | Unique payment identifier |
-| `order_id` | String | Index | Order reference |
-| `merchant_id` | String | Index | Merchant identifier |
-| `amount` | Integer | Non-null | Payment amount in paise |
-| `currency` | String | Default "INR" | 3-letter currency code |
-| `status` | String | Non-null | Gateway status (`captured`, `refunded`, etc.) |
-| `created_at` | String | Non-null | Timestamp |
-| `reference` | String | Nullable | Optional external reference |
-
-### 3. `settlements`
-Schema representing settlement batches and waterfalls.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | Integer | PK, Index | Auto-increment primary key |
-| `settlement_id` | String | Unique, Index | Unique settlement batch identifier |
-| `merchant_id` | String | Index | Merchant identifier |
-| `gross_amount` | Integer | Non-null | Gross settled amount in paise |
-| `fees` | Integer | Non-null | Deducted gateway fees |
-| `tax` | Integer | Non-null | GST/tax deducted |
-| `refunds` | Integer | Non-null | Deducted refund amounts |
-| `chargebacks` | Integer | Non-null | Deducted chargeback amounts |
-| `adjustments` | Integer | Non-null | Adjustments (+ or -) |
-| `net_amount` | Integer | Non-null | Net amount credited |
-| `currency` | String | Default "INR" | Currency |
-| `status` | String | Non-null | Settlement status |
-| `created_at` | String | Non-null | Timestamp |
-| `payment_reference` | String | Nullable | Matched payment reference (e.g. `REF-PAY_1001`) |
-
----
-
-## Migrations & Initialization
-
-Tables are auto-created on application startup via SQLAlchemy:
+ARIVO implements a non-destructive runtime schema migration function:
 ```python
-Base.metadata.create_all(bind=engine)
+_ensure_sqlite_columns(engine)
 ```
-
-No external migration tools (like Alembic) are currently configured. Database schema changes require deleting `arivo.db` and re-running the application.
+Upon startup, it inspects existing SQLite table columns via `PRAGMA table_info`. If any newly introduced columns are missing, it executes `ALTER TABLE ADD COLUMN` dynamically without dropping existing data or losing existing reconciliation state.

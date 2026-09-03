@@ -1,115 +1,117 @@
-# Architecture
+# ARIVO — System Architecture
 
-## Core Philosophy
+## 1. Core Philosophy
 
-> Use deterministic code where deterministic code is better (arithmetic, exact IDs, financial invariants).  
-> Use AI where AI is better (ambiguity, semantic interpretation, human-friendly explanation).  
-> Always gate AI output through deterministic controls before any final decision.
+> **"Know where every rupee went — or know exactly why you don't."**
+> 
+> *AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity.*
 
-## System Diagram
+In high-volume enterprise financial reconciliation, probabilistic machine learning models cannot be granted authority to reconcile ledger accounts or write off balance-sheet discrepancies. ARIVO resolves this by strictly decoupling **AI Investigation** from **Deterministic Decision Authority**:
+
+1. **Deterministic Rules Engine**: Blazing fast exact-matching and waterfall arithmetic (11,900+ records/sec).
+2. **Gemini AI Copilot**: Deep forensic investigation of genuine ambiguity, fee structure anomalies, and dispute narratives.
+3. **Authoritative Control Gate**: Absolute veto authority. Enforces 7 financial invariants. Even 99% AI confidence cannot force an auto-match if invariants are violated.
+
+---
+
+## 2. System Architecture Diagram
 
 ```mermaid
 flowchart TD
-    User["👤 User (Browser)"]
-    UI["React Frontend\n(Vite :5173)"]
+    User["👤 Merchant / Controller (Browser)"]
+    UI["React Frontend\n(Vite :5173 / Tailwind)"]
     Proxy["Vite Dev Proxy\n/api/* → :8000"]
     API["FastAPI Backend\n(:8000)"]
-    Engine["Deterministic Engine\nengine/reconciliation.py"]
-    Gate["Control Gate\nengine/control_gate.py"]
-    Gemini["Gemini AI\nai/gemini.py"]
-    DB["SQLite Database\narivo.db"]
-    GeminiAPI["Google Gemini API\n(external)"]
 
-    User --> UI
-    UI --> Proxy --> API
+    subgraph Data Sources
+        Synth["🔬 Controlled Synthetic Dataset\n(5,000+ Ground-Truth Txns)"]
+        RzpAPI["⚡ Razorpay Test Mode API\n(GET /v1/payments & /v1/settlements)"]
+    end
+
+    subgraph Ingestion & Normalization
+        Client["Razorpay Client\n(Basic Auth + Pagination + Backoff)"]
+        Normalizer["Normalizer Engine\n(Integer Paise + Waterfall Balance)"]
+        Snapshot["Snapshot Service\n(Preserves Last-Known-Good)"]
+    end
+
+    subgraph Core Financial Engine
+        Engine["Deterministic Recon Engine\n(Waterfall + Duplicate Protection)"]
+        Gate["Authoritative Control Gate\n(7 Core Financial Invariants)"]
+        Health["System Integrity Monitor\n(Continuous Invariant Checks)"]
+        Forecast["7-Day Cash Forecast\n(Confirmed vs T+2 Pipeline)"]
+    end
+
+    subgraph Intelligence & AI
+        Gemini["Gemini AI Client\n(google-genai / Gemini 2.5)"]
+        Ask["Grounded Copilot Engine\n(DB Entity Extraction + Invariant Reasoning)"]
+    end
+
+    DB[("SQLite Database\narivo.db (Integer Paise)")]
+
+    User <--> UI
+    UI <--> Proxy <--> API
+
+    RzpAPI --> Client --> Normalizer --> Snapshot --> DB
+    Synth --> DB
+
     API --> Engine
-    Engine -->|"ambiguous cases only"| Gemini
-    Gemini --> GeminiAPI
-    GeminiAPI --> Gemini
+    Engine -->|"Ambiguous only"| Gemini
     Gemini --> Gate
-    Engine -->|"clear cases"| Gate
+    Engine -->|"Deterministic matches"| Gate
     Gate --> DB
-    DB --> API --> UI --> User
+
+    API --> Forecast
+    API --> Health
+    API --> Ask
+    Ask --> DB
+    Ask --> Gemini
+
+    DB --> API
 ```
 
-## Component Map
+---
 
-| Layer | File(s) | Responsibility |
+## 3. Dual-Source Ingestion Architecture
+
+ARIVO supports seamless switching between two environments:
+
+| Source | Role | Data Guarantee |
 |---|---|---|
-| Frontend entry | `frontend/src/main.tsx` | React root mount |
-| App shell + routing | `frontend/src/App.tsx` | Sidebar nav, React Router |
-| Pages | `frontend/src/pages/` | Overview, Reconciliation, Exceptions, Settlements, Ask |
-| Shared API client | `frontend/src/api.ts` | `apiFetch()`, base URL |
-| Evidence drawer | `frontend/src/components/EvidenceDrawer.tsx` | Case detail panel |
-| Backend entry | `backend/main.py` | FastAPI app, all routes |
-| Database models | `backend/database.py` | SQLAlchemy models + session |
-| Reconciliation engine | `backend/engine/reconciliation.py` | Matching logic |
-| Control Gate | `backend/engine/control_gate.py` | Financial invariant validation |
-| AI module | `backend/ai/gemini.py` | Gemini client, prompts |
-| Dataset generator | `dataset/generate_dataset.py` | Synthetic CSV generation |
-| Benchmark | `evaluation/benchmark.py` | Accuracy measurement |
-| CLI trigger | `scripts/run_reconciliation.py` | HTTP POST to run endpoint |
+| **Controlled Synthetic Benchmark** | Benchmark accuracy, edge cases, regression testing | 100% known ground truth, 5,114 txns, 0 false auto-matches |
+| **Razorpay Test Mode** | Real-world provider integration | Live payments and settlements, rate-limit backoff, integer paise normalization |
 
-## Data Flow — Reconciliation Run
+---
+
+## 4. The 7 Core Financial Invariants (Control Gate)
+
+Every candidate match must clear the Authoritative Control Gate before being marked `MATCHED`. If any invariant fails, the match is blocked and routed to `REVIEW` or `EXCEPTION`:
+
+1. **Zero Amount Delta**: Payment captured amount must exactly equal settlement gross amount ($\Delta = 0$).
+2. **Single Candidate Uniqueness**: Only one matching settlement batch per payment reference.
+3. **High-Value Protection**: Any transaction exceeding ₹50,000 (5,000,000 paise) requires human controller sign-off.
+4. **No Conflicting Evidence**: Conflicting settlement references or dates block auto-clearance.
+5. **Duplicate Allocation Prevention**: A settlement cannot be allocated to more than one payment.
+6. **Settlement Waterfall Consistency**:
+   $$\text{Expected Net} = \text{Gross} - \text{Fees} - \text{Tax} - \text{Refunds} - \text{Chargebacks} + \text{Adjustments}$$
+   Any difference from deposited net is an `unexplained_delta`.
+7. **Currency Uniformity**: Multi-currency cross-matching is blocked (strict INR minor unit accounting).
+
+---
+
+## 5. Flagship AI Safety Architecture
 
 ```
-POST /api/reconciliation/run
-        ↓
-Load payments.csv + settlements.csv
-        ↓
-run_reconciliation() — deterministic engine
-  ├── EXACT_ID match     → candidate{conflicting_evidence: false}
-  ├── AMOUNT_MISMATCH    → candidate{conflicting_evidence: true}
-  ├── AMOUNT_DATE match  → candidate{conflicting_evidence: true}
-  ├── MULTIPLE candidates → candidate{multiple_candidates: true}
-  └── NO_MATCH           → candidate{conflicting_evidence: false}
-        ↓
-For each ambiguous case (conflicting_evidence OR multiple_candidates):
-  → investigate_case() → Gemini API
-  → returns {recommended_decision, confidence, summary, ...}
-        ↓
-validate_match() — Control Gate
-  Blocks if:
-    amount_delta != 0
-    multiple_candidates == true
-    high_value == true  (>500,000 paise / ₹5,000)
-    conflicting_evidence == true
-        ↓
-decide_final_status()
-  PASS + EXACT_ID/NORMALIZED_ID/GROUPED → MATCHED
-  PASS + AI says MATCHED                → MATCHED
-  BLOCK + AI says EXCEPTION             → EXCEPTION
-  BLOCK (default)                       → REVIEW
-  AI says EXCEPTION                     → EXCEPTION
-        ↓
-Upsert ReconciliationCase to SQLite
-        ↓
-Return {cases_processed, cases_saved}
+Record: PAY_FLAGSHIP_001 (₹6,00,000.00)
+├── Gemini Assessment:       "High contextual match. Recommending auto-match." (Confidence: 97%)
+├── Authoritative Gate:      BLOCK (Invariant: High-value transaction threshold exceeded)
+└── ARIVO Controller:        REVIEW
+                             Takeaway: "The AI is confident. The system is not."
 ```
 
-## Matching Strategy
+---
 
-| Method | Trigger | Conflict Flag |
-|---|---|---|
-| `EXACT_ID` | `payment_reference == REF-{payment_id}` and amounts match | `false` |
-| `AMOUNT_MISMATCH` | Reference matches, amounts differ | `true` |
-| `AMOUNT_DATE` | No reference match; single settlement with same gross amount | `true` |
-| `MULTIPLE` | No reference match; >1 settlements with same amount | `true` |
-| `NO_MATCH` | No reference, no amount match | `false` |
+## 6. Cash Forecasting Engine Architecture
 
-## Key Architectural Decisions
-
-### 1. Control Gate is authoritative over Gemini
-Gemini can recommend `MATCHED` with 99% confidence, but if the Control Gate detects a violation (high value, multiple candidates), the final status is `REVIEW` or `EXCEPTION`. This prevents AI from bypassing financial controls.
-
-### 2. AI is only invoked for ambiguous cases
-`EXACT_ID` matches with no amount delta bypass Gemini entirely. This keeps costs low and latency fast for the happy path.
-
-### 3. Synchronous reconciliation run
-The `POST /api/reconciliation/run` endpoint is synchronous. For the dataset size used in the hackathon (~5,000 rows), this is acceptable. For production, it should be moved to a background task queue.
-
-### 4. Relative imports throughout backend
-All backend modules use relative imports (`.engine`, `.ai`, etc.) so uvicorn can be launched from the project root as `backend.main:app`. This is the correct pattern.
-
-### 5. No authentication
-The application has no login/auth layer. It is designed for internal/demo use within a trusted environment.
+- **Confirmed Cash**: Funds reconciled from `MATCHED` cases already credited to the merchant's bank account.
+- **Expected Settlements (T+2 Pipeline)**: Captured payments awaiting settlement clearance modeled on Indian banking settlement windows (Day 1: 30%, Day 2: 40%, Day 3: 15%, Day 4: 8%, Day 5: 4%, Day 6: 3%).
+- **Unresolved Exposure**: Funds held in `REVIEW` and `EXCEPTION` queues, explicitly subtracted from confirmed liquidity.

@@ -112,11 +112,29 @@ def calculate_cash_forecast(db: Session) -> Dict[str, Any]:
             "confidence": "MEDIUM (GATEWAY T+2 PIPELINE)",
         })
 
+    days = [
+        {
+            "day_offset": item["day_index"],
+            "date": item["date"],
+            "label": item["label"],
+            "confirmed_cash_paise": item["amount"] if item["type"] == "CONFIRMED" else 0,
+            "expected_settlement_paise": item["amount"] if item["type"] == "EXPECTED" else 0,
+            "confidence": "CERTAIN" if item["type"] == "CONFIRMED" else "HIGH",
+            "type": item["type"],
+        }
+        for item in daily_breakdown
+    ]
+
     return {
         "confirmed_cash": matched_sum,
         "expected_settlements": pending_settlements_sum,
         "unresolved_exposure": unresolved_exposure,
         "seven_day_expected_inflow": inflow_sum,
         "timeline": daily_breakdown,
+        "days": days,
+        "summary": {
+            "total_projected": matched_sum + inflow_sum,
+            "pipeline_confidence": "HIGH",
+        },
         "methodology": "Deterministic T+2 settlement lag modeling using captured payments and staged batches.",
     }
