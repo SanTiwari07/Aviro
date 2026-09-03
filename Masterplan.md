@@ -3559,3 +3559,2990 @@ The winning principle is:
 DO NOT BUILD THE MOST SOFTWARE.
 
 BUILD THE MOST CREDIBLE FINANCE CONTROLLER.
+
+# ARIVO — FINAL IMPLEMENTATION & UPGRADE PROMPT
+
+## Role
+
+You are the principal engineer, backend engineer, frontend engineer, AI engineer, data engineer, QA engineer, and product engineer responsible for completing **ARIVO**, an AI Finance Controller built for the **Razorpay AI Buildathon 2026 — Track 04**.
+
+You are working inside an existing implementation.
+
+Your job is **NOT** to rebuild the application from scratch.
+
+Your job is to:
+
+1. inspect the existing implementation,
+2. understand what already works,
+3. preserve the strongest parts,
+4. integrate real Razorpay test-mode data as an additional source,
+5. improve the product around real financial provenance,
+6. strengthen reliability and demo safety,
+7. improve the existing dashboard and investigation experience,
+8. preserve the controlled synthetic benchmark,
+9. prove measurable AI value,
+10. leave the repository cleaner and more credible than before.
+
+The final product should feel like a real finance-control product rather than a collection of hackathon features.
+
+---
+
+# 1. PRODUCT IDENTITY
+
+Product:
+
+**ARIVO**
+
+Category:
+
+**AI Finance Controller**
+
+Primary positioning:
+
+> **Know where every rupee went — or know exactly why you don't.**
+
+Core philosophy:
+
+> **AI investigates.
+> Rules verify.
+> Controls protect.
+> Arivo decides.
+> Humans resolve ambiguity.**
+
+The product is fundamentally a financial reconciliation and control system.
+
+It is NOT:
+
+* a payment gateway,
+* a payment collection system,
+* a generic chatbot,
+* an AI-only reconciliation engine,
+* a collection of autonomous agents,
+* a Razorpay API wrapper.
+
+Razorpay is a financial data source.
+
+Arivo remains the controller.
+
+---
+
+# 2. MOST IMPORTANT ARCHITECTURAL RULE
+
+DO NOT replace the existing reconciliation engine with Razorpay-specific logic.
+
+DO NOT put Razorpay API calls inside the reconciliation algorithms.
+
+DO NOT allow Gemini to calculate authoritative financial amounts.
+
+DO NOT allow Gemini to override the Control Gate.
+
+DO NOT make the live Razorpay API the only data source.
+
+DO NOT remove the synthetic benchmark pipeline.
+
+The correct architecture is:
+
+```text
+                         DATA SOURCES
+                              |
+                 +------------+------------+
+                 |                         |
+                 v                         v
+          Synthetic Data            Razorpay Test API
+          CSV / Benchmark           Payments + Settlements
+                 |                         |
+                 +------------+------------+
+                              |
+                              v
+                       INGESTION LAYER
+                              |
+                              v
+                    NORMALIZATION LAYER
+                              |
+                              v
+                       VALIDATION
+                              |
+                              v
+                     DATA SNAPSHOT
+                              |
+                              v
+                  DETERMINISTIC RECON
+                              |
+                    +---------+---------+
+                    |                   |
+                  CLEAR              UNCLEAR
+                    |                   |
+                    |                Gemini
+                    |                   |
+                    +---------+---------+
+                              |
+                              v
+                        CONTROL GATE
+                              |
+               +--------------+--------------+
+               |              |              |
+               v              v              v
+            MATCHED         REVIEW       EXCEPTION
+               |              |              |
+               +--------------+--------------+
+                              |
+                              v
+                           SQLite
+                              |
+          +-------------------+--------------------+
+          |                   |                    |
+          v                   v                    v
+       Overview          Evidence Drawer       Ask Arivo
+          |
+          +---- Cash Position
+          +---- Cash Forecast
+          +---- Unresolved Exposure
+          +---- System Health
+          +---- Data Source / Freshness
+          +---- Benchmark / AI Contribution
+```
+
+This architecture must remain the central design.
+
+---
+
+# 3. FIRST STEP — INSPECT BEFORE MODIFYING
+
+Before writing or changing code:
+
+Inspect the entire repository.
+
+Inspect:
+
+* frontend structure,
+* backend structure,
+* database models,
+* reconciliation engine,
+* Control Gate,
+* Gemini integration,
+* API routes,
+* current UI pages,
+* Evidence Drawer,
+* Ask Arivo,
+* synthetic data generator,
+* benchmark implementation,
+* tests,
+* environment variables,
+* documentation,
+* deployment configuration,
+* error handling,
+* existing Razorpay documentation,
+* webhook documentation if present.
+
+Do not blindly overwrite existing work.
+
+Do not create duplicate implementations.
+
+Do not create a second reconciliation engine.
+
+Do not create a second Gemini integration.
+
+Do not create parallel data models unless the existing model genuinely needs extension.
+
+After inspection, produce an internal implementation plan based on the actual codebase.
+
+Then implement.
+
+---
+
+# 4. CURRENT SYSTEM — PRESERVE THESE STRENGTHS
+
+The existing system already has several important architectural strengths.
+
+Preserve:
+
+### Deterministic reconciliation
+
+Deterministic logic should remain responsible for:
+
+* exact identifiers,
+* normalized identifiers,
+* amount comparison,
+* currency comparison,
+* date windows,
+* candidate generation,
+* duplicate detection,
+* grouped reconciliation where already implemented,
+* settlement arithmetic,
+* financial invariants,
+* risk checks.
+
+### Gemini
+
+Gemini should remain responsible for:
+
+* ambiguous cases,
+* semantic interpretation,
+* evidence interpretation,
+* exception explanation,
+* root-cause hypotheses,
+* finance-friendly summaries,
+* policy-oriented explanations.
+
+Gemini must NOT:
+
+* authorize money,
+* calculate authoritative settlement values,
+* bypass a failed control,
+* convert a Control Gate BLOCK into MATCHED,
+* invent record IDs,
+* invent financial values.
+
+### Control Gate
+
+The Control Gate remains authoritative.
+
+If:
+
+```text
+Control Gate = BLOCK
+```
+
+the final result cannot become:
+
+```text
+MATCHED
+```
+
+because Gemini is confident.
+
+The system must preserve this invariant.
+
+---
+
+# 5. PRIMARY UPGRADE — RAZORPAY TEST-MODE DATA
+
+Real Razorpay API access is now available.
+
+This changes the implementation priority.
+
+The highest-value integration is:
+
+```text
+Razorpay Test API
+        |
+        +--> Payments
+        |
+        +--> Settlements
+        |
+        v
+Arivo Normalization
+        |
+        v
+Existing Reconciliation Engine
+```
+
+Use Razorpay APIs only from the backend.
+
+Never expose credentials to the frontend.
+
+Credentials must be loaded from environment variables.
+
+Expected configuration should follow this principle:
+
+```text
+RAZORPAY_KEY_ID
+RAZORPAY_KEY_SECRET
+```
+
+Do not hard-code secrets.
+
+Do not commit secrets.
+
+Do not put credentials in frontend JavaScript.
+
+Do not return secrets through API responses.
+
+---
+
+# 6. RAZORPAY INTEGRATION LAYER
+
+Create a clean provider/integration boundary.
+
+Preferred structure:
+
+```text
+backend/
+    integrations/
+        __init__.py
+        razorpay/
+            __init__.py
+            client.py
+            payments.py
+            settlements.py
+            normalizer.py
+            errors.py
+```
+
+Adapt this structure to the actual repository rather than forcing it if a better existing structure already exists.
+
+The integration should provide clean operations conceptually equivalent to:
+
+```python
+fetch_payments(...)
+fetch_settlements(...)
+```
+
+The Razorpay-specific implementation must not leak throughout the application.
+
+---
+
+# 7. RAZORPAY CLIENT REQUIREMENTS
+
+Implement a server-side Razorpay API client.
+
+Requirements:
+
+* authenticated server-side requests,
+* configurable timeout,
+* clear exception types,
+* HTTP status handling,
+* authentication failure handling,
+* rate-limit handling,
+* timeout handling,
+* network failure handling,
+* malformed response handling,
+* pagination handling where required,
+* retry only where safe,
+* no infinite retries,
+* structured logging without secrets,
+* no sensitive credential leakage.
+
+Never silently convert API failure into empty financial data.
+
+Bad:
+
+```text
+Razorpay request failed
+        ↓
+payments = []
+settlements = []
+        ↓
+reconciliation runs with zero data
+```
+
+Correct:
+
+```text
+Razorpay request failed
+        ↓
+SYNC_FAILED
+        ↓
+No reconciliation is started
+        ↓
+User sees explicit failure
+        ↓
+Previous valid snapshot remains available
+```
+
+---
+
+# 8. PAGINATION IS REQUIRED
+
+Do not assume a single Razorpay API response contains every record.
+
+Implement pagination according to the API response semantics.
+
+The system should report:
+
+```text
+pages fetched
+records fetched
+records normalized
+records rejected
+```
+
+Example:
+
+```text
+Razorpay Sync
+
+Pages fetched       4
+Payments fetched    1,248
+Settlements fetched    86
+Normalized          1,334
+Rejected               0
+```
+
+Do not silently drop records.
+
+---
+
+# 9. NORMALIZATION LAYER
+
+This is one of the most important additions.
+
+Never pass raw Razorpay JSON directly into reconciliation logic.
+
+Create a normalized internal representation.
+
+Conceptually:
+
+```text
+Razorpay Payment
+        |
+        v
+PaymentNormalizer
+        |
+        v
+Arivo Payment
+```
+
+and:
+
+```text
+Razorpay Settlement
+        |
+        v
+SettlementNormalizer
+        |
+        v
+Arivo Settlement
+```
+
+The normalized representation should contain the fields required by the existing reconciliation engine.
+
+Preserve:
+
+* provider ID,
+* internal ID,
+* amount,
+* currency,
+* status,
+* timestamps,
+* references,
+* settlement information,
+* relevant metadata,
+* source information.
+
+Monetary values must remain internally consistent with the existing application's minor-unit convention.
+
+Do not introduce floating-point financial arithmetic.
+
+Use integer minor units or an equivalent exact representation.
+
+---
+
+# 10. DATA PROVENANCE
+
+Every imported record should carry source provenance.
+
+At minimum, support concepts equivalent to:
+
+```text
+source
+source_record_id
+sync_id
+fetched_at
+```
+
+Example:
+
+```text
+source: razorpay_test
+source_record_id: pay_ABC123
+sync_id: SYNC_20260903_1042
+fetched_at: 2026-09-03T10:42:18
+```
+
+Synthetic records should similarly identify themselves as:
+
+```text
+source: synthetic
+```
+
+This provenance must survive through reconciliation.
+
+A reconciliation case should be traceable to:
+
+```text
+Source
+    ↓
+Source Record
+    ↓
+Sync
+    ↓
+Reconciliation Run
+    ↓
+Case
+    ↓
+Decision
+```
+
+---
+
+# 11. SYNC MUST BE SEPARATE FROM RECONCILIATION
+
+Do not hide data fetching inside the reconciliation algorithm.
+
+Create a conceptual lifecycle:
+
+```text
+SYNC
+  ↓
+SNAPSHOT
+  ↓
+RECONCILIATION RUN
+```
+
+A Razorpay sync should:
+
+1. fetch payments,
+2. fetch settlements,
+3. normalize them,
+4. validate them,
+5. persist or stage the snapshot,
+6. assign a sync ID,
+7. expose sync statistics,
+8. mark success/failure explicitly.
+
+Then reconciliation operates against that snapshot.
+
+This makes the process auditable and reproducible.
+
+---
+
+# 12. SYNC RECORD
+
+If the current database architecture permits it cleanly, introduce a lightweight sync/run metadata structure.
+
+Conceptually:
+
+```text
+sync_id
+source
+started_at
+completed_at
+status
+payments_fetched
+settlements_fetched
+records_normalized
+records_rejected
+error_code
+error_message
+```
+
+Do not overengineer this.
+
+SQLite remains acceptable.
+
+---
+
+# 13. SOURCE SELECTOR UI
+
+Add a clear data-source selector.
+
+Example:
+
+```text
+DATA SOURCE
+
+[ Synthetic Demo ]   [ Razorpay Test ]
+```
+
+Synthetic mode:
+
+```text
+Controlled benchmark data
+Reproducible
+Ground truth available
+```
+
+Razorpay mode:
+
+```text
+Razorpay Test Mode
+External test data
+No real money movement
+```
+
+Do not misleadingly call test data "production" or "live production data."
+
+Use accurate language such as:
+
+**Razorpay Test Mode**
+
+or:
+
+**Razorpay Test API**
+
+---
+
+# 14. RAZORPAY SYNC UI
+
+Provide an explicit action:
+
+```text
+[ Sync Razorpay ]
+```
+
+After successful synchronization:
+
+```text
+Razorpay Test Mode
+CONNECTED
+
+Last successful sync
+10:42:18
+
+Payments
+1,248
+
+Settlements
+86
+
+Records normalized
+1,334
+
+[ Run Reconciliation ]
+```
+
+The UI must distinguish:
+
+* syncing,
+* successful,
+* failed,
+* stale,
+* never synced.
+
+---
+
+# 15. API FAILURE UX
+
+If Razorpay is unavailable:
+
+Show something like:
+
+```text
+Razorpay Test API unavailable
+
+Reason:
+Request timed out.
+
+No new reconciliation was started.
+
+Last successful snapshot:
+10:42:18
+
+[ Retry ]
+[ Use Demo Dataset ]
+```
+
+Never show:
+
+```text
+0 payments
+0 settlements
+₹0 unresolved
+```
+
+when the actual reason is an API failure.
+
+This is a critical financial safety requirement.
+
+---
+
+# 16. LAST-KNOWN-GOOD SNAPSHOT
+
+If practical within the existing architecture, maintain the last successful Razorpay snapshot.
+
+If the latest API request fails:
+
+```text
+Latest sync
+FAILED
+
+Last successful snapshot
+SYNC_0041
+
+Status
+AVAILABLE
+```
+
+Allow the user to explicitly choose whether to reconcile against the last successful snapshot.
+
+Do not silently substitute stale data.
+
+Clearly label it:
+
+```text
+LAST SUCCESSFUL SNAPSHOT
+```
+
+---
+
+# 17. DO NOT REMOVE SYNTHETIC DATA
+
+Synthetic data remains mandatory.
+
+It is required for:
+
+* deterministic demos,
+* regression testing,
+* benchmark evaluation,
+* ground truth,
+* AI contribution measurement,
+* failure scenarios,
+* reproducibility.
+
+The existing synthetic generator must continue to work.
+
+The final system must support:
+
+```text
+Synthetic Mode
+```
+
+and:
+
+```text
+Razorpay Test Mode
+```
+
+using the same downstream reconciliation engine.
+
+---
+
+# 18. BENCHMARK MUST REMAIN CONTROLLED
+
+Do NOT use arbitrary Razorpay API data as the primary benchmark.
+
+A live/test API response does not automatically provide hidden ground truth.
+
+Benchmark:
+
+```text
+Synthetic controlled dataset
+        ↓
+Known ground truth
+        ↓
+Baseline
+        ↓
+Arivo
+        ↓
+Metrics
+```
+
+Measure:
+
+* precision,
+* recall,
+* F1,
+* false auto-matches,
+* review rate,
+* exception rate,
+* auto-resolution rate,
+* silent drops,
+* financial exposure,
+* high-value false matches,
+* throughput.
+
+If existing benchmark code supports these metrics, extend it rather than rewriting it.
+
+---
+
+# 19. PROVE AI VALUE
+
+Do not merely show:
+
+```text
+Gemini confidence: 97%
+```
+
+That is not sufficient.
+
+Show measurable AI contribution.
+
+Compare:
+
+```text
+Deterministic Baseline
+vs
+Arivo + Gemini
+```
+
+Where possible, show:
+
+* ambiguous cases,
+* cases investigated by Gemini,
+* correct Gemini recommendations,
+* cases correctly routed to REVIEW,
+* cases where Control Gate blocked unsafe AI recommendations,
+* AI failures/fallbacks,
+* false auto-matches prevented,
+* financial exposure prevented.
+
+The goal is to prove:
+
+> AI helps investigate uncertainty without being allowed to compromise financial safety.
+
+---
+
+# 20. FLAGSHIP AI SAFETY DEMO
+
+Preserve/create one especially strong demonstration case.
+
+Scenario:
+
+```text
+High-value transaction
+Multiple plausible candidates
+Gemini recommends MATCH
+Confidence: 97%
+```
+
+Then:
+
+```text
+Control Gate
+BLOCK
+```
+
+because of one or more deterministic safety conditions such as:
+
+* multiple candidates,
+* high-value transaction,
+* conflicting evidence,
+* amount mismatch,
+* other critical invariant failure.
+
+Final:
+
+```text
+REVIEW
+```
+
+The product should make this visually obvious.
+
+Recommended message:
+
+> **The AI is confident. The system is not.**
+
+This should become one of the central demo moments.
+
+---
+
+# 21. WHY GEMINI WAS / WAS NOT USED
+
+Add a transparent indicator to reconciliation cases.
+
+Examples:
+
+```text
+AI
+Not required
+
+Reason:
+Unique identifier and financial controls were sufficient.
+```
+
+or:
+
+```text
+AI
+Investigated
+
+Reason:
+Multiple candidate settlements required semantic analysis.
+```
+
+This demonstrates selective AI usage.
+
+It also avoids giving the impression that every financial record is unnecessarily sent to an LLM.
+
+---
+
+# 22. UNRESOLVED FINANCIAL EXPOSURE
+
+Make this a hero metric on Overview.
+
+Calculate:
+
+```text
+REVIEW financial impact
++
+EXCEPTION financial impact
+=
+UNRESOLVED FINANCIAL EXPOSURE
+```
+
+Display:
+
+```text
+UNRESOLVED EXPOSURE
+
+₹44,300
+
+REVIEW
+₹31,500
+
+EXCEPTION
+₹12,800
+```
+
+Where possible, additionally show:
+
+```text
+High-value unresolved
+₹...
+```
+
+This is more meaningful than merely showing case counts.
+
+Do not fake this number.
+
+It must come from actual backend data.
+
+---
+
+# 23. EVIDENCE DRAWER
+
+Make the Evidence Drawer one of the strongest parts of the product.
+
+It should provide a complete chain of evidence.
+
+Recommended structure:
+
+```text
+CASE
+
+Payment
+pay_xxxxx
+
+Settlement
+setl_xxxxx
+
+Source
+Razorpay Test Mode
+
+Sync
+SYNC_0042
+
+Reconciliation Run
+RUN_0043
+```
+
+Then:
+
+```text
+MATCH EVIDENCE
+
+Match method
+EXACT_ID / FUZZY / GROUPED / ...
+
+Candidate records
+...
+
+Identifier evidence
+...
+
+Amount evidence
+...
+
+Date evidence
+...
+```
+
+Then:
+
+```text
+FINANCIAL WATERFALL
+
+Gross
+₹...
+
+Refunds
+₹...
+
+Chargebacks
+₹...
+
+Fees
+₹...
+
+Tax
+₹...
+
+Adjustments
+₹...
+
+Expected net
+₹...
+
+Actual settlement
+₹...
+
+Unexplained delta
+₹...
+```
+
+Then:
+
+```text
+AI INVESTIGATION
+
+Recommendation
+MATCH
+
+Confidence
+97%
+
+Summary
+...
+
+Evidence cited
+...
+```
+
+Then:
+
+```text
+CONTROL GATE
+
+BLOCK
+
+Reasons:
+- Multiple candidates
+- High-value case
+- Conflicting evidence
+```
+
+Finally:
+
+```text
+FINAL ARIVO DECISION
+
+REVIEW
+```
+
+The drawer must make it possible for a finance analyst to understand why the system reached its decision.
+
+---
+
+# 24. ASK ARIVO MUST USE REAL DATA
+
+Improve Ask Arivo from a generic/static policy chatbot into a grounded finance query interface.
+
+The architecture should be conceptually:
+
+```text
+User question
+      ↓
+Intent/query interpretation
+      ↓
+Controlled backend query
+      ↓
+Actual database records
+      ↓
+Relevant policy context
+      ↓
+Gemini explanation
+      ↓
+Answer + record references
+```
+
+Do NOT allow arbitrary AI-generated SQL.
+
+The backend remains responsible for retrieving actual financial values.
+
+---
+
+# 25. ASK ARIVO EXAMPLES
+
+Support questions such as:
+
+```text
+How much money is currently unresolved?
+```
+
+```text
+Which settlement has the largest unexplained delta?
+```
+
+```text
+Why is pay_xxxxx in review?
+```
+
+```text
+How many high-value cases are unresolved?
+```
+
+```text
+Show SET_1821.
+```
+
+The answer must use actual backend values.
+
+Never fabricate numbers.
+
+---
+
+# 26. ASK ARIVO → EVIDENCE DRAWER
+
+This interaction is especially important.
+
+If the user asks:
+
+```text
+Show SET_1821
+```
+
+return:
+
+```text
+SET_1821
+
+[ View Evidence ]
+```
+
+Clicking it must open the existing Evidence Drawer.
+
+The drawer should show the actual settlement record and related reconciliation cases.
+
+This creates:
+
+```text
+Natural language
+      ↓
+Financial record
+      ↓
+Evidence
+      ↓
+Decision
+```
+
+This is a much stronger demonstration than a generic chatbot response.
+
+---
+
+# 27. RUNS HISTORY
+
+Add a Runs history view if it does not already exist.
+
+Each run should expose:
+
+```text
+run_id
+source
+sync_id
+timestamp
+records processed
+matched
+review
+exception
+duration
+throughput
+AI investigations
+AI failures
+```
+
+Example:
+
+```text
+RUN_0043
+
+Source
+Razorpay Test
+
+Sync
+SYNC_0042
+
+Records
+1,334
+
+MATCHED
+1,280
+
+REVIEW
+39
+
+EXCEPTION
+15
+
+Duration
+2.8 sec
+
+AI investigations
+74
+
+AI failures
+0
+```
+
+Runs should be reproducible and traceable.
+
+---
+
+# 28. RUN SOURCE COMPARISON
+
+The Runs page should make it obvious that the same controller works against both sources.
+
+Example:
+
+```text
+RUN_0043
+Razorpay Test
+1,334 records
+
+RUN_0042
+Synthetic Benchmark
+1,000 records
+```
+
+This reinforces:
+
+> Controlled benchmark + real provider data.
+
+---
+
+# 29. 7-DAY CASH FORECAST
+
+After Razorpay ingestion is stable, implement the cash forecast.
+
+This should be deterministic.
+
+Do NOT call Gemini to calculate the forecast.
+
+Use:
+
+* pending settlements,
+* settlement history,
+* historical settlement lag,
+* expected settlement dates,
+* confidence based on historical behavior,
+* current unresolved exposure where relevant.
+
+Example:
+
+```text
+7-DAY CASH OUTLOOK
+
+Today
+₹8.42L confirmed
+
+Tomorrow
+₹0.74L expected
+
+Day 2
+₹0.52L expected
+
+Day 3
+₹0.61L expected
+
+...
+```
+
+The methodology should be explainable.
+
+---
+
+# 30. CASH FORECAST MUST DISTINGUISH CONFIRMED VS EXPECTED
+
+Never combine these into one number.
+
+Show:
+
+```text
+CONFIRMED CASH
+₹8.42L
+
+EXPECTED SETTLEMENTS
+₹2.17L
+
+UNRESOLVED EXPOSURE
+₹44K
+
+7-DAY EXPECTED INFLOW
+₹2.91L
+```
+
+This distinction is critical for finance users.
+
+---
+
+# 31. CONFIDENCE CALIBRATION
+
+Only implement confidence calibration if the benchmark contains enough AI-labelled cases.
+
+Do not make unsupported claims.
+
+Do NOT write:
+
+```text
+97% probability this is correct
+```
+
+unless the metric has actually been calibrated and validated.
+
+Prefer:
+
+```text
+AI confidence
+97%
+```
+
+For calibration:
+
+```text
+Predicted confidence
+vs
+Observed accuracy
+```
+
+Where possible show:
+
+* confidence bucket,
+* number of cases,
+* actual accuracy,
+* calibration error.
+
+If insufficient data exists, explicitly state:
+
+```text
+Calibration data insufficient
+```
+
+rather than inventing a chart.
+
+---
+
+# 32. EXCEPTION CSV EXPORT
+
+Add a simple export action:
+
+```text
+[ Export Exceptions CSV ]
+```
+
+Export actual backend exception records.
+
+Include useful fields such as:
+
+```text
+run_id
+payment_id
+settlement_id
+status
+match_method
+financial_impact
+ai_confidence
+ai_recommendation
+control_result
+reason
+source
+sync_id
+created_at
+```
+
+Do not generate fake export data.
+
+---
+
+# 33. SYSTEM HEALTH / CONTROL HEALTH
+
+Add a compact system integrity panel.
+
+Possible checks:
+
+```text
+CONTROL HEALTH
+
+Population conservation       PASS
+Settlement arithmetic         PASS
+Duplicate allocation          PASS
+Currency consistency          PASS
+High-value protection         PASS
+Unexplained delta protection  PASS
+AI schema validation          PASS
+```
+
+If a check fails, show:
+
+```text
+BLOCKED
+```
+
+rather than hiding it.
+
+This communicates that Arivo is a control system, not merely a prediction system.
+
+---
+
+# 34. RAZORPAY API HEALTH
+
+Add a small provider status indicator.
+
+Example:
+
+```text
+RAZORPAY TEST API
+
+● Connected
+
+Last successful sync
+10:42:18
+```
+
+Failure:
+
+```text
+○ Unavailable
+
+Last successful sync
+10:42:18
+```
+
+Never use green for a failed or stale provider.
+
+---
+
+# 35. DATABASE CHANGES
+
+Extend the current database minimally.
+
+Do not replace SQLite.
+
+Potential additions:
+
+```text
+syncs
+```
+
+or equivalent sync metadata.
+
+Potential additions to reconciliation cases:
+
+```text
+source
+source_record_id
+sync_id
+```
+
+Potential additions to runs:
+
+```text
+source
+sync_id
+duration
+records_processed
+ai_cases
+ai_failures
+```
+
+Use the existing SQLAlchemy architecture.
+
+Do not introduce a second ORM.
+
+Do not introduce a database server unless absolutely required.
+
+---
+
+# 36. IDEMPOTENCY
+
+Razorpay syncing and reconciliation must be safe to repeat.
+
+If the same source snapshot is fetched multiple times:
+
+```text
+do not create duplicate financial records
+```
+
+Repeated reconciliation of the same snapshot should produce consistent results.
+
+Use stable source IDs.
+
+For Razorpay:
+
+```text
+payment_id
+settlement_id
+```
+
+should be treated as provider identifiers, not regenerated internal random IDs.
+
+---
+
+# 37. DUPLICATE PROTECTION
+
+Explicitly test:
+
+* duplicate payment,
+* duplicate settlement,
+* repeated sync,
+* repeated reconciliation,
+* duplicate allocation,
+* same payment matched twice,
+* same settlement allocated twice.
+
+A financial controller must never silently duplicate money.
+
+---
+
+# 38. WEBHOOKS — OPTIONAL, NOT FIRST PRIORITY
+
+If sufficient time remains after the core Razorpay API integration is stable, consider:
+
+```text
+POST /api/webhooks/razorpay
+```
+
+Verify:
+
+```text
+X-Razorpay-Signature
+```
+
+using the appropriate cryptographic verification method.
+
+Support only the minimum useful events required for the demo.
+
+Potential examples:
+
+```text
+payment.captured
+settlement.processed
+```
+
+Webhook lifecycle:
+
+```text
+Razorpay
+   ↓
+Webhook
+   ↓
+Signature verification
+   ↓
+Event validation
+   ↓
+Persist event
+   ↓
+Update source snapshot/state
+   ↓
+Optional reconciliation trigger
+```
+
+Do not build a complete event-driven payments platform.
+
+Do not implement payouts merely because the API exists.
+
+Do not implement payment collection.
+
+Do not implement unnecessary refunds/payout workflows unless they are directly required by the existing reconciliation architecture.
+
+Webhooks are a bonus.
+
+A stable Payments + Settlements API integration is more important.
+
+---
+
+# 39. RAZORPAY API SHOULD NOT CONTROL FINAL DECISIONS
+
+The Razorpay API provides source data.
+
+It does not determine:
+
+```text
+MATCHED
+REVIEW
+EXCEPTION
+```
+
+Arivo determines those through:
+
+```text
+Deterministic reconciliation
++
+financial validation
++
+Gemini investigation where needed
++
+Control Gate
+```
+
+---
+
+# 40. FRONTEND DESIGN
+
+Preserve the existing professional finance dashboard.
+
+The UI should feel:
+
+* trustworthy,
+* dense but readable,
+* operational,
+* modern,
+* financial,
+* evidence-oriented.
+
+Avoid excessive:
+
+* gradients,
+* floating blobs,
+* gimmicky animations,
+* giant hero sections inside the application,
+* decorative AI effects.
+
+Use animation only where it improves feedback.
+
+The existing project already has a Razorpay-inspired visual system. Reuse the existing design tokens and components instead of creating a competing visual language.
+
+---
+
+# 41. OVERVIEW PAGE
+
+The Overview page should become the operational command center.
+
+Recommended hierarchy:
+
+```text
+ARIVO
+AI Finance Controller
+
+Razorpay Test API
+● Connected
+Last sync: 10:42:18
+```
+
+Then:
+
+```text
+FINANCIAL CONTROL
+
+Processed
+1,334
+
+Matched
+1,280
+
+Review
+39
+
+Exception
+15
+```
+
+Then prominently:
+
+```text
+UNRESOLVED EXPOSURE
+
+₹44,300
+```
+
+Then:
+
+```text
+CASH POSITION
+
+Confirmed
+₹8.42L
+
+Expected
+₹2.17L
+
+Unexplained
+₹44K
+```
+
+Then:
+
+```text
+7-DAY CASH OUTLOOK
+...
+```
+
+Then:
+
+```text
+CONTROL HEALTH
+...
+```
+
+Then:
+
+```text
+AI CONTRIBUTION
+...
+```
+
+---
+
+# 42. RECONCILIATION PAGE
+
+Support filtering by:
+
+* status,
+* amount,
+* confidence,
+* high-value,
+* source,
+* match method,
+* exception type.
+
+Rows should clearly expose:
+
+```text
+Payment
+Settlement
+Status
+Amount
+Match method
+AI
+Control
+Source
+```
+
+Clicking a row opens the Evidence Drawer.
+
+---
+
+# 43. EXCEPTIONS PAGE
+
+Rank exceptions by financial significance.
+
+Show:
+
+```text
+Highest financial impact first
+```
+
+Useful filters:
+
+* high-value,
+* exception type,
+* source,
+* amount,
+* age,
+* settlement,
+* payment.
+
+Provide:
+
+```text
+Export CSV
+```
+
+---
+
+# 44. SETTLEMENTS PAGE
+
+Show settlement-centric information.
+
+Useful columns:
+
+```text
+Settlement ID
+Source
+Settlement date
+Gross
+Fees
+Tax
+Refunds
+Chargebacks
+Adjustments
+Net
+Bank/confirmed amount if available
+Unexplained delta
+Status
+```
+
+Click settlement:
+
+```text
+Evidence Drawer
+```
+
+This is particularly useful for Razorpay settlement demonstrations.
+
+---
+
+# 45. ASK PAGE
+
+Ask Arivo should look like a finance analyst interface.
+
+Show:
+
+```text
+Ask Arivo
+
+Try:
+• How much money is unresolved?
+• Which settlement has the largest unexplained delta?
+• Why is this payment in review?
+• Show SET_1821
+```
+
+Answers must be grounded.
+
+Show references.
+
+Show clickable record IDs.
+
+---
+
+# 46. BENCHMARK PAGE
+
+If benchmark UI exists or can be added cleanly:
+
+```text
+BENCHMARK
+
+Dataset
+Synthetic Holdout
+
+Baseline
+vs
+Arivo
+```
+
+Show:
+
+```text
+Precision
+Recall
+F1
+False auto-matches
+Review rate
+Exception rate
+Throughput
+```
+
+Then:
+
+```text
+AI CONTRIBUTION
+
+Ambiguous cases
+...
+
+Correct AI recommendations
+...
+
+AI recommendations blocked by Control Gate
+...
+
+Unsafe matches prevented
+...
+
+False auto-match exposure
+₹0
+```
+
+Only show ₹0 if the benchmark actually supports that claim.
+
+---
+
+# 47. LIVE VS BENCHMARK MUST BE CLEAR
+
+Do not mix metrics from different contexts.
+
+Clearly label:
+
+```text
+BENCHMARK
+Controlled synthetic data
+Known ground truth
+```
+
+versus:
+
+```text
+LIVE / TEST DATA
+Razorpay Test Mode
+External API data
+```
+
+Do not calculate benchmark accuracy using data without ground truth.
+
+---
+
+# 48. ERROR HANDLING
+
+Every major operation must have:
+
+```text
+Loading
+Success
+Empty
+Error
+```
+
+states.
+
+For Razorpay:
+
+```text
+Connecting...
+```
+
+```text
+Connected
+```
+
+```text
+Authentication failed
+```
+
+```text
+Rate limited
+```
+
+```text
+Request timed out
+```
+
+```text
+Malformed provider response
+```
+
+Do not expose raw stack traces to the user.
+
+Do not hide errors.
+
+---
+
+# 49. LOGGING
+
+Logs should be useful for debugging.
+
+Include:
+
+```text
+sync_id
+run_id
+source
+operation
+duration
+record counts
+error category
+```
+
+Never log:
+
+* API secrets,
+* authorization headers,
+* credentials,
+* full sensitive payloads unnecessarily.
+
+---
+
+# 50. TESTING REQUIREMENTS
+
+Add tests before declaring the feature complete.
+
+At minimum test:
+
+### Razorpay client
+
+* successful response,
+* authentication error,
+* rate limit,
+* timeout,
+* network error,
+* malformed response,
+* pagination.
+
+### Normalizer
+
+* valid payment,
+* valid settlement,
+* missing required field,
+* invalid amount,
+* invalid currency,
+* malformed timestamp,
+* provider-specific edge cases.
+
+### Sync
+
+* successful sync,
+* repeated sync,
+* partial failure,
+* zero records,
+* API unavailable,
+* snapshot preservation.
+
+### Reconciliation
+
+* Razorpay normalized records reach existing engine,
+* exact match,
+* mismatch,
+* ambiguous match,
+* no match,
+* grouped reconciliation where applicable,
+* settlement waterfall,
+* high-value case,
+* Control Gate block.
+
+### AI
+
+* valid Gemini response,
+* malformed response,
+* unavailable Gemini,
+* timeout,
+* confidence handling,
+* AI recommendation cannot bypass Control Gate.
+
+### Ask Arivo
+
+* actual unresolved amount,
+* settlement lookup,
+* payment lookup,
+* nonexistent record,
+* malicious/uncontrolled query,
+* no fabricated financial values.
+
+### Runs
+
+* run creation,
+* counts,
+* duration,
+* source,
+* sync ID,
+* repeated runs.
+
+---
+
+# 51. ADVERSARIAL TESTING
+
+Explicitly test cases that could create dangerous false matches.
+
+Examples:
+
+```text
+same amount
+different payment IDs
+different dates
+multiple candidates
+high-value amount
+conflicting identifiers
+duplicate settlement
+settlement delta
+wrong currency
+```
+
+The system must prefer:
+
+```text
+REVIEW
+```
+
+over an unsafe automatic match.
+
+This is more important than maximizing match rate.
+
+---
+
+# 52. HIGH-VALUE CONTROL
+
+Preserve the high-value protection.
+
+A high-value ambiguous transaction must not automatically match merely because Gemini has high confidence.
+
+Example:
+
+```text
+Amount
+₹500,000+
+
+Gemini
+97% MATCH
+
+Control Gate
+BLOCK
+
+Final
+REVIEW
+```
+
+The exact threshold must follow the existing project's configured policy.
+
+Do not arbitrarily introduce a conflicting threshold.
+
+---
+
+# 53. FINANCIAL INVARIANTS
+
+Preserve and test:
+
+### Population conservation
+
+Every input record must have an accounted-for outcome.
+
+### Settlement arithmetic
+
+Expected and actual settlement calculations must remain internally consistent.
+
+### Child allocation
+
+Grouped records must sum exactly to the parent amount.
+
+### Duplicate allocation
+
+One settlement must not be incorrectly allocated to unrelated records.
+
+### Currency
+
+Currency must be compatible.
+
+### Unexplained delta
+
+Unexplained financial deltas must not silently auto-close.
+
+### High-value ambiguity
+
+High-value ambiguous records require review.
+
+### Control Gate
+
+AI cannot bypass a failed critical control.
+
+---
+
+# 54. CASH FORECAST SAFETY
+
+Do not make the cash forecast appear more certain than it is.
+
+Distinguish:
+
+```text
+confirmed
+expected
+estimated
+unresolved
+```
+
+If historical confidence is weak, communicate that.
+
+Do not let the forecast imply guaranteed future cash.
+
+---
+
+# 55. DOCUMENTATION UPDATES
+
+After implementation, update documentation.
+
+At minimum update:
+
+```text
+RAZORPAY.md
+README.md
+API.md
+API_ENDPOINTS.md
+ARCHITECTURE.md
+BACKEND.md
+DATABASE.md
+ENVIRONMENT.md
+ERROR_HANDLING.md
+DEVELOPMENT.md
+CHANGELOG.md
+```
+
+If webhook documentation exists, update it only if webhooks are actually implemented.
+
+Documentation must reflect the actual implementation.
+
+Do not leave statements such as:
+
+```text
+No Razorpay integration
+```
+
+after implementing it.
+
+---
+
+# 56. UPDATE RAZORPAY.md
+
+Rewrite it from:
+
+```text
+Razorpay integration not implemented
+```
+
+into an accurate status document.
+
+Include:
+
+```text
+Integration status
+Supported APIs
+Test-mode behavior
+Data flow
+Authentication
+Environment variables
+Normalization
+Sync lifecycle
+Failure handling
+Snapshot behavior
+Security
+Limitations
+Webhook status
+```
+
+Be honest about test mode.
+
+Do not claim production integration if only test-mode integration exists.
+
+---
+
+# 57. README POSITIONING
+
+The README should explain:
+
+```text
+Arivo can operate against:
+
+1. controlled synthetic benchmark data
+2. Razorpay Test API data
+```
+
+Then explain why both exist:
+
+```text
+Synthetic data provides reproducible evaluation.
+
+Razorpay Test Mode demonstrates compatibility with a real payment-provider data source.
+```
+
+This is a strong engineering story.
+
+---
+
+# 58. DO NOT OVERCLAIM
+
+Never say:
+
+```text
+Production Razorpay integration
+```
+
+unless production access actually exists and is supported.
+
+Prefer:
+
+```text
+Razorpay Test Mode Integration
+```
+
+Never say:
+
+```text
+AI guarantees correctness
+```
+
+Say:
+
+```text
+AI investigates ambiguity; deterministic controls remain authoritative.
+```
+
+Never say:
+
+```text
+97% accurate
+```
+
+based solely on confidence.
+
+Use actual benchmark metrics.
+
+---
+
+# 59. SECURITY
+
+Ensure:
+
+* secrets remain backend-only,
+* `.env` is ignored by git,
+* `.env.example` contains placeholders only,
+* frontend never receives Razorpay secrets,
+* errors don't leak credentials,
+* logs don't contain credentials,
+* webhook secrets are protected if webhooks are implemented,
+* provider payloads are handled safely.
+
+Do not add authentication/RBAC unless there is substantial remaining time and it does not threaten the core implementation.
+
+For this hackathon, correctness and demo reliability are higher priority.
+
+---
+
+# 60. DO NOT ADD MULTI-AGENT ARCHITECTURE
+
+Do not introduce multiple AI agents.
+
+The current targeted Gemini investigator is sufficient.
+
+The architecture should remain:
+
+```text
+Deterministic engine
+       ↓
+Gemini investigator when needed
+       ↓
+Control Gate
+```
+
+More agents do not automatically make the product better.
+
+---
+
+# 61. DO NOT BUILD A GIANT RAG SYSTEM
+
+Ask Arivo needs controlled retrieval.
+
+Do not introduce:
+
+* giant vector databases,
+* complex retrieval infrastructure,
+* arbitrary semantic databases.
+
+Use the existing policy/data retrieval architecture where possible.
+
+The backend must control financial data retrieval.
+
+---
+
+# 62. DO NOT IMPLEMENT PAYMENT COLLECTION
+
+Do not use Razorpay APIs to:
+
+* create payments,
+* collect money,
+* initiate real transfers,
+* trigger financial operations.
+
+Arivo is a controller/reconciliation system.
+
+Its role is to analyze and control financial records.
+
+---
+
+# 63. DO NOT IMPLEMENT UNNECESSARY RAZORPAY APIS
+
+Prioritize:
+
+```text
+Payments
+Settlements
+```
+
+Optional:
+
+```text
+Webhooks
+```
+
+Skip unless directly useful:
+
+```text
+Payouts
+Payment collection
+Unrelated operational APIs
+```
+
+Every additional external API creates another failure surface.
+
+---
+
+# 64. IMPLEMENTATION ORDER
+
+Follow this order.
+
+## Phase 1 — Inspection
+
+Inspect existing code and documentation.
+
+Do not modify yet.
+
+---
+
+## Phase 2 — Razorpay foundation
+
+Implement:
+
+```text
+Razorpay client
+Payments API
+Settlements API
+Authentication
+Pagination
+Timeouts
+Errors
+```
+
+---
+
+## Phase 3 — Normalization
+
+Implement:
+
+```text
+Razorpay JSON
+    ↓
+Normalized Arivo records
+```
+
+Test thoroughly.
+
+---
+
+## Phase 4 — Sync/Snapshot
+
+Implement:
+
+```text
+Sync
+↓
+Validation
+↓
+Snapshot
+↓
+sync_id
+```
+
+Add provenance.
+
+---
+
+## Phase 5 — Existing engine integration
+
+Connect normalized Razorpay data to the existing reconciliation engine.
+
+Do NOT rewrite the engine unless inspection proves a real incompatibility.
+
+---
+
+## Phase 6 — Reliability
+
+Implement:
+
+```text
+API failure
+timeout
+rate limit
+malformed data
+last successful snapshot
+clear UI errors
+```
+
+---
+
+## Phase 7 — UI source selection
+
+Add:
+
+```text
+Synthetic Demo
+Razorpay Test
+```
+
+and:
+
+```text
+Sync Razorpay
+```
+
+---
+
+## Phase 8 — Evidence provenance
+
+Show:
+
+```text
+Source
+Sync ID
+Provider record ID
+Run ID
+```
+
+in Evidence Drawer.
+
+---
+
+## Phase 9 — Unresolved exposure
+
+Add the financial exposure KPI.
+
+---
+
+## Phase 10 — Ask Arivo grounding
+
+Connect Ask Arivo to real backend records.
+
+Implement:
+
+```text
+View SET_xxx
+```
+
+and:
+
+```text
+View pay_xxx
+```
+
+into Evidence Drawer.
+
+---
+
+## Phase 11 — Runs
+
+Add run history and source/sync provenance.
+
+---
+
+## Phase 12 — Cash forecast
+
+Implement deterministic 7-day forecast.
+
+---
+
+## Phase 13 — Benchmark / AI contribution
+
+Improve benchmark visibility and AI lift measurement.
+
+---
+
+## Phase 14 — Confidence calibration
+
+Only if benchmark data supports it.
+
+---
+
+## Phase 15 — CSV export
+
+Add exception export.
+
+---
+
+## Phase 16 — Webhooks
+
+Only if all previous phases are stable and there is meaningful time remaining.
+
+---
+
+# 65. DEMO FALLBACK STRATEGY
+
+The application must NEVER depend entirely on the external Razorpay API for the demo.
+
+The guaranteed fallback is:
+
+```text
+Synthetic Dataset
+```
+
+If Razorpay fails:
+
+```text
+Razorpay unavailable
+        ↓
+Do not crash
+        ↓
+Show error
+        ↓
+Allow Demo Dataset
+        ↓
+Existing deterministic pipeline
+        ↓
+Demo continues
+```
+
+This is mandatory.
+
+The live integration is an enhancement, not a single point of demo failure.
+
+---
+
+# 66. FIVE-MINUTE DEMO FLOW
+
+The final application should support this sequence naturally.
+
+## 0:00 — Problem
+
+Explain:
+
+> Finance teams don't just need to know what matched. They need to know what did not match, why, how much money is exposed, and whether automation is safe.
+
+---
+
+## 0:30 — Razorpay connection
+
+Show:
+
+```text
+Razorpay Test Mode
+● Connected
+
+Payments
+1,248
+
+Settlements
+86
+```
+
+Click:
+
+```text
+Sync Razorpay
+```
+
+---
+
+## 1:00 — Reconciliation
+
+Show:
+
+```text
+1,334 records
+1,280 matched
+39 review
+15 exceptions
+```
+
+---
+
+## 1:30 — Clean case
+
+Open a normal match.
+
+Show:
+
+```text
+Razorpay source
+Payment
+Settlement
+Exact match
+Control Gate PASS
+MATCHED
+```
+
+---
+
+## 2:00 — Financial exception
+
+Open a settlement with an unexplained delta.
+
+Show:
+
+```text
+Gross
+Fees
+Tax
+Refunds
+Chargebacks
+Expected
+Actual
+Delta
+```
+
+Final:
+
+```text
+EXCEPTION
+```
+
+---
+
+## 2:30 — AI safety flagship
+
+Show:
+
+```text
+Gemini
+97% MATCH
+```
+
+Then:
+
+```text
+Control Gate
+BLOCK
+```
+
+Then:
+
+```text
+Final
+REVIEW
+```
+
+Say:
+
+> **The AI is confident. The system is not.**
+
+---
+
+## 3:15 — Ask Arivo
+
+Ask:
+
+```text
+How much money is currently unresolved?
+```
+
+Show actual amount.
+
+Then:
+
+```text
+Show the largest unresolved settlement.
+```
+
+Click:
+
+```text
+View SET_xxx
+```
+
+Evidence Drawer opens.
+
+---
+
+## 4:00 — Cash forecast
+
+Show:
+
+```text
+Confirmed cash
+Expected settlements
+7-day outlook
+Unresolved exposure
+```
+
+---
+
+## 4:30 — Benchmark
+
+Show:
+
+```text
+Baseline
+vs
+Arivo
+```
+
+and:
+
+```text
+Precision
+Recall
+F1
+False auto-match exposure
+AI contribution
+```
+
+---
+
+## 4:55 — Closing
+
+Use:
+
+> **Arivo doesn't automate uncertainty away. It makes uncertainty visible — and protects the money when AI isn't certain enough.**
+
+---
+
+# 67. QUALITY BAR
+
+The final system must be:
+
+* functional,
+* reliable,
+* reproducible,
+* secure,
+* measurable,
+* explainable,
+* testable,
+* visually polished,
+* demo-ready.
+
+Do not optimize for number of features.
+
+Optimize for:
+
+1. correctness,
+2. financial safety,
+3. evidence,
+4. real-data credibility,
+5. measurable AI value,
+6. demo reliability.
+
+---
+
+# 68. STOP CONDITIONS
+
+Do NOT continue adding features if any of these are broken:
+
+```text
+Razorpay sync unreliable
+```
+
+```text
+Synthetic benchmark broken
+```
+
+```text
+Reconciliation regression
+```
+
+```text
+Control Gate bypass possible
+```
+
+```text
+Evidence Drawer broken
+```
+
+```text
+Ask Arivo fabricates financial values
+```
+
+```text
+Duplicate records possible
+```
+
+```text
+API failure produces silent zero data
+```
+
+```text
+Frontend contains fake metrics
+```
+
+```text
+Existing tests fail
+```
+
+The product should become smaller and more reliable rather than larger and unstable.
+
+---
+
+# 69. FINAL ACCEPTANCE CHECKLIST
+
+Before completion, verify:
+
+## Razorpay
+
+* [ ] Razorpay Test API credentials work
+* [ ] Payments API works
+* [ ] Settlements API works
+* [ ] Pagination works
+* [ ] Timeouts handled
+* [ ] Authentication failures handled
+* [ ] Rate limits handled
+* [ ] Provider errors handled
+* [ ] No secrets exposed
+* [ ] Source provenance stored
+* [ ] Sync IDs generated
+* [ ] Last successful snapshot supported where implemented
+
+## Reconciliation
+
+* [ ] Razorpay data reaches existing engine
+* [ ] Synthetic data still works
+* [ ] Exact matching works
+* [ ] Ambiguity works
+* [ ] Settlement waterfall works
+* [ ] Exceptions work
+* [ ] High-value protection works
+* [ ] Duplicate protection works
+* [ ] Control Gate remains authoritative
+* [ ] AI cannot bypass controls
+
+## AI
+
+* [ ] Gemini only used when appropriate
+* [ ] AI response schema validated
+* [ ] AI failures safely handled
+* [ ] AI confidence clearly labelled
+* [ ] AI contribution measurable
+* [ ] No fabricated financial numbers
+
+## UI
+
+* [ ] Source selector
+* [ ] Razorpay sync status
+* [ ] Unresolved exposure
+* [ ] Cash position
+* [ ] Cash forecast
+* [ ] Evidence Drawer
+* [ ] Ask Arivo
+* [ ] Ask Arivo → record → Evidence Drawer
+* [ ] Runs history
+* [ ] Benchmark
+* [ ] Exception CSV export
+* [ ] Error states
+* [ ] Loading states
+* [ ] Empty states
+* [ ] No fake metrics
+* [ ] No broken navigation
+
+## Testing
+
+* [ ] Existing tests pass
+* [ ] New Razorpay tests pass
+* [ ] Normalization tests pass
+* [ ] Failure tests pass
+* [ ] Idempotency tests pass
+* [ ] Adversarial matching tests pass
+* [ ] Benchmark runs
+* [ ] Frontend builds
+* [ ] Backend starts cleanly
+
+## Documentation
+
+* [ ] README updated
+* [ ] RAZORPAY.md updated
+* [ ] ARCHITECTURE.md updated
+* [ ] BACKEND.md updated
+* [ ] DATABASE.md updated
+* [ ] API documentation updated
+* [ ] ENVIRONMENT.md updated
+* [ ] ERROR_HANDLING.md updated
+* [ ] CHANGELOG.md updated
+* [ ] Webhook documentation updated only if webhooks were actually implemented
+
+---
+
+# 70. FINAL PRODUCT PRINCIPLE
+
+Do not lose sight of what makes Arivo different.
+
+The goal is not:
+
+> "We connected Razorpay APIs."
+
+The goal is:
+
+> **"Arivo can take real Razorpay financial data, reconcile it deterministically, investigate ambiguity with AI, prove the evidence, prevent unsafe AI decisions through a Control Gate, quantify unresolved financial exposure, and give finance teams a clear view of what money is settled, expected, or still unexplained."**
+
+The final system should communicate:
+
+```text
+REAL DATA
+    ↓
+RECONCILIATION
+    ↓
+EVIDENCE
+    ↓
+AI INVESTIGATION
+    ↓
+CONTROL
+    ↓
+SAFE DECISION
+    ↓
+FINANCIAL VISIBILITY
+```
+
+And the central product message remains:
+
+> **AI investigates.
+> Rules verify.
+> Controls protect.
+> Arivo decides.
+> Humans resolve ambiguity.**
