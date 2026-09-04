@@ -86,7 +86,7 @@ export default function Sidebar({
               className="w-full bg-[#071E3D] hover:bg-[#0A264D] border border-white/15 text-slate-200 text-xs rounded-md px-2.5 py-1.5 appearance-none focus:outline-none focus:border-[#0D94FB] transition-colors cursor-pointer font-sans"
             >
               <option value="synthetic">Synthetic Benchmark (5,114 txns)</option>
-              <option value="razorpay">Razorpay Test Store</option>
+              <option value="razorpay_test">Razorpay Test Store · Synthetic Data</option>
               <option value="all">Unified Global Ledger (All)</option>
             </select>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2 pointer-events-none" />
@@ -151,9 +151,9 @@ export default function Sidebar({
         <div className="flex items-center justify-between text-slate-300">
           <div className="flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-[#8B7CFF]" />
-            <span className="text-slate-200">AI Engine</span>
+            <span className="text-slate-200">AI Investigation</span>
           </div>
-          <span className="text-[#A79CFF] font-medium">Gemini 2.5</span>
+          <span className="text-[#A79CFF] font-medium">Investigation Engine</span>
         </div>
 
         <div className="flex items-center justify-between text-slate-300">

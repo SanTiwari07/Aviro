@@ -92,7 +92,7 @@ export default function App() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-mono text-content-muted">Workspace:</span>
                   <span className="text-xs font-mono font-bold text-brand uppercase tracking-wider">
-                    {currentSource}
+                    {currentSource === 'razorpay_test' ? 'RAZORPAY TEST STORE' : currentSource}
                   </span>
                 </div>
               </div>

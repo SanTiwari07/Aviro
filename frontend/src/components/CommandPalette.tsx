@@ -39,7 +39,7 @@ export default function CommandPalette({
     { label: 'Cash Position & Forecast', path: '/cash-position', icon: TrendingUp, category: 'Navigation' },
     { label: 'Reconciliation Runs History', path: '/runs', icon: History, category: 'Navigation' },
     { label: 'Audit & Invariant Verification', path: '/audit', icon: ShieldCheck, category: 'Navigation' },
-    { label: 'Ask Arivo — Grounded AI Copilot', path: '/ask', icon: Terminal, category: 'Navigation' },
+    { label: 'Ask Arivo — Grounded Investigation Copilot', path: '/ask', icon: Terminal, category: 'Navigation' },
     { label: 'Controlled Synthetic Benchmark', path: '/benchmark', icon: Scale, category: 'Navigation' },
   ];
 

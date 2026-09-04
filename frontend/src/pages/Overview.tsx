@@ -31,11 +31,13 @@ export default function Overview({
   const [dashboard, setDashboard] = useState<any>(null);
   const [exceptions, setExceptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const loadOverviewData = () => {
     setLoading(true);
+    setError(null);
     Promise.all([
       api.getDashboard(source),
       api.getCashForecast().catch(() => null),
@@ -46,7 +48,10 @@ export default function Overview({
         setDashboard(dash);
         if (Array.isArray(exc)) setExceptions(exc);
       })
-      .catch((err) => console.error('Overview load failed:', err))
+      .catch((err) => {
+        console.error('Overview load failed:', err);
+        setError(err?.message || 'Failed to connect to reconciliation backend. Please ensure the backend server is running.');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -59,9 +64,9 @@ export default function Overview({
     setSyncMessage(null);
     try {
       const res = await api.syncRazorpay();
-      setSyncMessage(
-        `Synced ${res.payments_fetched || 0} payments and ${res.settlements_fetched || 0} settlements.`
-      );
+      const countMsg = res.message || `Synced ${res.payments_fetched || 0} payments and ${res.settlements_fetched || 0} settlements.`;
+      const provenance = res.mode === 'synthetic' ? ' [Razorpay Test Store · Synthetic Data]' : ' [Live API]';
+      setSyncMessage(`${countMsg}${provenance}`);
       loadOverviewData();
     } catch (err: any) {
       setSyncMessage(`Sync note: ${err.message}`);
@@ -71,17 +76,17 @@ export default function Overview({
   };
 
   const d = dashboard || {};
-  const totalVolume = d.total_processed_volume || d.total_volume || 0;
-  const totalCount = d.total_records || d.total_cases || 0;
-  const matchedVol = d.matched_volume || 0;
-  const matchedCount = d.matched_count || 0;
-  const reviewVol = d.review_volume || 0;
-  const reviewCount = d.review_count || 0;
-  const exceptionVol = d.exception_volume || 0;
-  const exceptionCount = d.exception_count || 0;
+  const totalVolume = d.total_processed_volume ?? d.total_volume ?? d.cash_position?.expected ?? 0;
+  const totalCount = d.total_records ?? d.total_cases ?? d.processed ?? 0;
+  const matchedVol = d.matched_volume ?? d.cash_position?.settled ?? 0;
+  const matchedCount = d.matched_count ?? d.matched ?? 0;
+  const reviewVol = d.review_volume ?? d.unresolved_exposure?.review_paise ?? 0;
+  const reviewCount = d.review_count ?? d.review ?? 0;
+  const exceptionVol = d.exception_volume ?? d.unresolved_exposure?.exception_paise ?? 0;
+  const exceptionCount = d.exception_count ?? d.exceptions ?? 0;
   const unresolvedExposure =
-    d.unresolved_financial_exposure || reviewVol + exceptionVol;
-  const highValExposure = d.high_value_exposure || 0;
+    d.unresolved_financial_exposure ?? d.unresolved_exposure?.total_paise ?? (reviewVol + exceptionVol);
+  const highValExposure = d.high_value_exposure ?? d.unresolved_exposure?.high_value_paise ?? 0;
 
   const matchedPercent = totalVolume > 0 ? ((matchedVol / totalVolume) * 100).toFixed(1) : '0.0';
 
@@ -95,9 +100,14 @@ export default function Overview({
               Financial Control Room
             </h1>
             <StatusBadge status="OPERATIONAL" label="LIVE MONITOR" size="sm" />
+            {source === 'razorpay_test' && (
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 font-semibold">
+                Razorpay Test Store · Synthetic Data
+              </span>
+            )}
           </div>
           <p className="text-xs text-content-muted mt-1 font-mono">
-            Deterministic Reconciliation • Gemini 2.5 Investigation • Authoritative Control Gate
+            Deterministic Reconciliation · Investigation Engine · Authoritative Control Gate
           </p>
         </div>
 
@@ -111,7 +121,7 @@ export default function Overview({
             <RefreshCw
               className={`w-3.5 h-3.5 ${syncing ? 'animate-spin text-brand' : ''}`}
             />
-            <span>Sync Razorpay</span>
+            <span>{source === 'razorpay_test' ? 'Sync Razorpay Test Store' : 'Sync Razorpay'}</span>
           </button>
 
           <button
@@ -123,6 +133,59 @@ export default function Overview({
           </button>
         </div>
       </div>
+
+      {/* Explicit Backend Error Banner - NEVER Silently Mask As ₹0.00 */}
+      {error && (
+        <div className="p-4 rounded-lg bg-status-coral/10 border border-status-coral/40 text-status-coral flex items-center justify-between shadow-subtle">
+          <div className="flex items-center gap-2.5">
+            <AlertOctagon className="w-5 h-5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold">Reconciliation Backend Connection Error</p>
+              <p className="text-xs font-mono opacity-90">{error}</p>
+            </div>
+          </div>
+          <button
+            onClick={loadOverviewData}
+            className="px-3 py-1 rounded bg-status-coral/20 hover:bg-status-coral/30 text-xs font-semibold transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Empty State Diagnostic Banner */}
+      {!loading && !error && totalCount === 0 && (
+        <div className="p-4 rounded-lg bg-status-amber/10 border border-status-amber/40 text-status-amber flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold">No Transactions In Workspace</p>
+              <p className="text-xs text-content-muted">
+                {source === 'razorpay_test'
+                  ? 'No records found for Razorpay Test Store. Click "Sync Razorpay Test Store" to load the test dataset, then execute reconciliation.'
+                  : 'No reconciliation cases recorded yet. Click "Run Reconciliation" to ingest and reconcile the active dataset.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {source === 'razorpay_test' && (
+              <button
+                onClick={handleSyncRazorpay}
+                disabled={syncing}
+                className="px-3 py-1.5 rounded bg-status-amber/20 hover:bg-status-amber/30 text-xs font-semibold text-status-amber transition-colors"
+              >
+                Sync Test Store
+              </button>
+            )}
+            <button
+              onClick={onOpenReconcileModal}
+              className="px-3 py-1.5 rounded bg-brand text-white text-xs font-semibold hover:bg-brand-hover transition-colors"
+            >
+              Run Pipeline
+            </button>
+          </div>
+        </div>
+      )}
 
       {syncMessage && (
         <div className="p-3 rounded-lg bg-surface border border-brand/40 text-xs text-content-secondary font-mono flex items-center justify-between shadow-subtle">
@@ -245,11 +308,11 @@ export default function Overview({
           {/* Step 3 */}
           <div className="p-3 bg-surface-elevated rounded-md border-l-2 border-l-[#8B7CFF] border border-border space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[#8B7CFF] text-[10px] uppercase font-semibold">3. AI Copilot</span>
+              <span className="text-[#8B7CFF] text-[10px] uppercase font-semibold">3. INVESTIGATION COPILOT</span>
               <Sparkles className="w-3 h-3 text-[#8B7CFF]" />
             </div>
-            <p className="text-[#8B7CFF] font-bold">Gemini 2.5</p>
-            <p className="text-content-muted text-[11px]">Investigate Ambiguity</p>
+            <p className="text-[#8B7CFF] font-bold">Investigation Engine</p>
+            <p className="text-content-muted text-[11px]">Resolve Ambiguity</p>
           </div>
 
           {/* Step 4 */}

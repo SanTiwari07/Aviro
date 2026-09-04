@@ -1,0 +1,14 @@
+{
+  "features": [
+    "amount_delta",
+    "amount_ratio",
+    "date_delta_days",
+    "merchant_match",
+    "currency_match",
+    "reference_similarity",
+    "candidate_count"
+  ],
+  "model": "XGBoostClassifier",
+  "task": "payment_settlement_candidate_scoring",
+  "score_note": "Model score is a ranking signal. Do not describe it as calibrated probability without calibration."
+}

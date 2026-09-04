@@ -89,18 +89,18 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
               </div>
               <p className="text-xs text-content-secondary leading-relaxed max-w-3xl">
                 A high-value ₹2,49,999.00 transaction encountered two identical date and amount settlement candidates.
-                Gemini recommended <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">MATCH with 97% confidence</span> based on narrative context.
+                The Investigation Engine recommended <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">MATCH with 97% confidence</span> based on narrative context.
                 However, Arivo's Control Gate vetoed the match, holding the transaction in <span className="text-[#D98A26] dark:text-[#FFB454] font-bold">REVIEW</span> because Invariant 6 strictly forbids automated finalization on ambiguous high-value disbursements.
               </p>
             </div>
 
             {/* Visual Progression: VIOLET -> CORAL -> AMBER */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
-              {/* Step 1: Gemini AI (Violet) */}
+              {/* Step 1: Investigation Engine (Violet) */}
               <div className="p-3.5 bg-surface-elevated rounded-lg border-2 border-[#8B7CFF]/40 text-center space-y-1">
                 <div className="flex items-center justify-center gap-1.5 text-[#7462F5] dark:text-[#A79CFF] text-[10px] uppercase font-mono font-bold">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>1. Gemini 2.5 LLM</span>
+                  <span>1. Investigation Engine</span>
                 </div>
                 <div className="font-mono font-bold text-[#7462F5] dark:text-[#A79CFF] text-sm">
                   {demo?.gemini_decision || 'MATCH (97% Conf)'}

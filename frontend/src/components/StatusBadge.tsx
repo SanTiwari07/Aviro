@@ -66,6 +66,10 @@ export default function StatusBadge({
     case 'AI':
     case 'GEMINI':
     case 'AI INVESTIGATOR':
+    case 'AI INVESTIGATION':
+    case 'INVESTIGATION':
+    case 'INVESTIGATION COPILOT':
+    case 'INVESTIGATION ENGINE':
       colorStyles =
         'bg-[#8B7CFF]/12 text-[#7462F5] dark:bg-[#8B7CFF]/20 dark:text-[#A79CFF] border-[#8B7CFF]/30';
       dotColor = 'bg-[#8B7CFF]';

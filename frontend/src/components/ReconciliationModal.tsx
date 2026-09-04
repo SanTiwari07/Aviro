@@ -22,7 +22,7 @@ const STAGES = [
   { id: 1, name: 'Data Normalization', desc: 'Sanitizing transaction IDs, converting minor units to integer paise' },
   { id: 2, name: 'Deterministic Exact ID Match', desc: 'Direct reference resolution & single unallocated candidate verification' },
   { id: 3, name: 'Settlement Waterfall Audit', desc: 'Net = Gross − Fees − Tax − Refunds. Detecting unexplained deltas' },
-  { id: 4, name: 'AI Ambiguity Investigation', desc: 'Gemini semantic reasoning on partial and date/amount candidates', isAi: true },
+  { id: 4, name: 'AI Ambiguity Investigation', desc: 'Investigation Engine semantic reasoning on partial and date/amount candidates', isAi: true },
   { id: 5, name: 'Authoritative Control Gate', desc: 'Evaluating 7 financial invariants. Vetoing ambiguous high-value matches', isGate: true },
   { id: 6, name: 'Ledger Finalization', desc: 'Committing reconciled cases, audit stamps, and cash projections' },
 ];

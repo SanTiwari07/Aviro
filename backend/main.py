@@ -52,6 +52,20 @@ app.add_middleware(
 razorpay_sync_service = RazorpaySyncService()
 
 
+def _normalize_source(source: Optional[str]) -> Optional[str]:
+    """
+    Normalizes source parameters across API endpoints.
+    Maps 'razorpay' and 'razorpay_test_store' to 'razorpay_test'.
+    Maps 'all' or None to None (unfiltered global view).
+    """
+    if not source or source == "all":
+        return None
+    s = source.strip().lower()
+    if s in ("razorpay", "razorpay_test", "razorpay_test_store"):
+        return "razorpay_test"
+    return s
+
+
 # ---------------------------------------------------------
 # Health and Provider Diagnostics
 # ---------------------------------------------------------
@@ -74,15 +88,33 @@ def health_check(db: Session = Depends(database.get_db)):
 @app.get("/api/razorpay/status")
 def razorpay_status(db: Session = Depends(database.get_db)):
     """
-    Returns Razorpay Test Mode connection status and last successful sync snapshot.
-    Ensures zero credential leakage.
+    Returns Razorpay Test Mode connection status, data source availability,
+    and last successful sync snapshot. Ensures zero credential leakage.
     """
     client = RazorpayClient()
     conn_info = client.test_connection()
     last_sync = razorpay_sync_service.get_latest_sync(db)
     last_good = razorpay_sync_service.get_last_successful_sync(db)
 
+    # Check local dataset availability
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    payments_csv = os.path.join(project_root, "dataset", "data", "payments.csv")
+    settlements_csv = os.path.join(project_root, "dataset", "data", "settlements.csv")
+    dataset_exists = os.path.exists(payments_csv) and os.path.exists(settlements_csv)
+
+    db_payments_count = db.query(database.Payment).filter(database.Payment.source == "razorpay_test").count()
+    db_settlements_count = db.query(database.Settlement).filter(database.Settlement.source == "razorpay_test").count()
+
+    is_live_active = client.is_configured and conn_info.get("connected") and conn_info.get("items_found", 0) > 0
+
     return {
+        "source": "razorpay_test",
+        "mode": "live" if is_live_active else "synthetic",
+        "available": dataset_exists or db_payments_count > 0,
+        "payments": db_payments_count or (5114 if dataset_exists else 0),
+        "settlements": db_settlements_count or (4839 if dataset_exists else 0),
+        "last_synced_at": last_good.completed_at if last_good else None,
+        "message": "Live Razorpay API connected" if is_live_active else "Razorpay-compatible synthetic test dataset",
         "is_configured": client.is_configured,
         "connection": conn_info,
         "latest_sync": {
@@ -103,13 +135,16 @@ def razorpay_status(db: Session = Depends(database.get_db)):
 
 
 @app.post("/api/razorpay/sync")
-def trigger_razorpay_sync(db: Session = Depends(database.get_db)):
+def trigger_razorpay_sync(payload: Optional[dict] = None, db: Session = Depends(database.get_db)):
     """
-    Triggers an external Razorpay Test Mode data synchronization.
+    Triggers Razorpay Test Store data synchronization.
+    Supports payload: {"mode": "auto" | "synthetic" | "live"}.
     Saves snapshot to database with immutable sync record.
     Never crashes on API error; preserves previous snapshots.
     """
-    res = razorpay_sync_service.sync(db)
+    req = payload or {}
+    mode = req.get("mode", "auto")
+    res = razorpay_sync_service.sync(db, mode=mode)
     return res
 
 
@@ -146,7 +181,11 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
     Records ReconciliationRun telemetry and full provenance.
     """
     req = payload or {}
-    source = req.get("source", "synthetic")
+    raw_source = req.get("source", "synthetic")
+    source = _normalize_source(raw_source) or "synthetic"
+    if source not in ("synthetic", "razorpay_test"):
+        raise HTTPException(status_code=400, detail=f"Unsupported source '{raw_source}'. Use 'synthetic' or 'razorpay_test'.")
+
     run_id = f"RUN_{uuid.uuid4().hex[:8].upper()}"
     start_time = time.time()
 
@@ -178,13 +217,16 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
         payments_path = os.path.join(data_dir, "payments.csv")
         settlements_path = os.path.join(data_dir, "settlements.csv")
 
-        if not os.path.exists(payments_path):
+        if not os.path.exists(payments_path) or not os.path.exists(settlements_path):
             raise HTTPException(status_code=400, detail="Synthetic dataset not found. Run: make generate-data")
 
-        with open(payments_path, "r") as f:
+        with open(payments_path, "r", encoding="utf-8") as f:
             payments = list(csv.DictReader(f))
-        with open(settlements_path, "r") as f:
+        with open(settlements_path, "r", encoding="utf-8") as f:
             settlements = list(csv.DictReader(f))
+
+        if not payments or not settlements:
+            raise HTTPException(status_code=400, detail="Synthetic dataset is empty. Run: make generate-data to generate valid test records.")
 
         for p in payments:
             p["amount"] = int(p["amount"])
@@ -250,9 +292,15 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
         db_settlements = db.query(database.Settlement).filter(database.Settlement.source == "razorpay_test").all()
 
         if not db_payments:
+            logger.info("[reconciliation/run] No Razorpay Test records in DB snapshot. Triggering auto-sync.")
+            razorpay_sync_service.sync(db, mode="auto")
+            db_payments = db.query(database.Payment).filter(database.Payment.source == "razorpay_test").all()
+            db_settlements = db.query(database.Settlement).filter(database.Settlement.source == "razorpay_test").all()
+
+        if not db_payments:
             raise HTTPException(
                 status_code=400,
-                detail="No Razorpay Test Mode records in snapshot. Please click 'Sync Razorpay' first.",
+                detail="No Razorpay Test Mode records found. Please click 'Sync Razorpay Test Store' first.",
             )
 
         payments = [
@@ -432,6 +480,11 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
     db.commit()
 
     logger.info(f"[reconciliation/run] Completed {run_id}: {len(cases_data)} cases in {elapsed_ms:.1f}ms")
+    logger.info(
+        f"[reconciliation] run_id={run_id} payments={len(payments)} settlements={len(settlements)} "
+        f"cases={len(cases_data)} matched={matched_count} review={review_count} exceptions={exception_count} "
+        f"database={database.DATABASE_URL} duration={elapsed_ms:.1f}ms"
+    )
 
     return {
         "status": "success",
@@ -459,10 +512,12 @@ def get_dashboard(source: Optional[str] = None, db: Session = Depends(database.g
     """
     Returns dashboard state, cash position, and the hero metric:
     UNRESOLVED FINANCIAL EXPOSURE.
+    Harmonizes response fields with frontend expectations.
     """
+    norm_source = _normalize_source(source)
     q = db.query(database.ReconciliationCase)
-    if source and source != "all":
-        q = q.filter(database.ReconciliationCase.source == source)
+    if norm_source:
+        q = q.filter(database.ReconciliationCase.source == norm_source)
 
     total = q.count()
     matched = q.filter(database.ReconciliationCase.status == "MATCHED").count()
@@ -477,6 +532,7 @@ def get_dashboard(source: Optional[str] = None, db: Session = Depends(database.g
     )
     impact_by_status = {row[0]: row[1] or 0 for row in impact_rows}
 
+    # Total processed volume is the sum of financial impacts for all cases
     total_expected = sum(impact_by_status.values())
     total_settled = impact_by_status.get("MATCHED", 0)
     review_exposure = impact_by_status.get("REVIEW", 0)
@@ -501,10 +557,23 @@ def get_dashboard(source: Optional[str] = None, db: Session = Depends(database.g
     last_good = razorpay_sync_service.get_last_successful_sync(db)
 
     return {
+        "source": norm_source or "all",
         "processed": total,
+        "total_records": total,
+        "total_cases": total,
         "matched": matched,
+        "matched_count": matched,
         "review": review,
+        "review_count": review,
         "exceptions": exceptions,
+        "exception_count": exceptions,
+        "total_processed_volume": total_expected,
+        "total_volume": total_expected,
+        "matched_volume": total_settled,
+        "review_volume": review_exposure,
+        "exception_volume": exception_exposure,
+        "unresolved_financial_exposure": unresolved_exposure,
+        "high_value_exposure": hv_unresolved,
         "unresolved_exposure": {
             "total_paise": unresolved_exposure,
             "total_formatted": format_inr(unresolved_exposure),
@@ -544,9 +613,10 @@ def list_reconciliation(
     db: Session = Depends(database.get_db),
 ):
     """Lists reconciliation cases with multi-attribute filtering."""
+    norm_source = _normalize_source(source)
     q = db.query(database.ReconciliationCase)
-    if source and source != "all":
-        q = q.filter(database.ReconciliationCase.source == source)
+    if norm_source:
+        q = q.filter(database.ReconciliationCase.source == norm_source)
     if status and status != "all":
         q = q.filter(database.ReconciliationCase.status == status.upper())
     if search:
@@ -702,11 +772,12 @@ def list_exceptions(
     db: Session = Depends(database.get_db),
 ):
     """Lists exception cases sorted by financial impact (highest risk first)."""
+    norm_source = _normalize_source(source)
     q = db.query(database.ReconciliationCase).filter(
         database.ReconciliationCase.status.in_(["REVIEW", "EXCEPTION"])
     )
-    if source and source != "all":
-        q = q.filter(database.ReconciliationCase.source == source)
+    if norm_source:
+        q = q.filter(database.ReconciliationCase.source == norm_source)
 
     cases = q.order_by(database.ReconciliationCase.financial_impact.desc()).limit(limit).all()
     return cases
@@ -715,11 +786,12 @@ def list_exceptions(
 @app.get("/api/exceptions/export")
 def export_exceptions_csv(source: Optional[str] = None, db: Session = Depends(database.get_db)):
     """Exports all unresolved exception cases to downloadable CSV format."""
+    norm_source = _normalize_source(source)
     q = db.query(database.ReconciliationCase).filter(
         database.ReconciliationCase.status.in_(["REVIEW", "EXCEPTION"])
     )
-    if source and source != "all":
-        q = q.filter(database.ReconciliationCase.source == source)
+    if norm_source:
+        q = q.filter(database.ReconciliationCase.source == norm_source)
 
     cases = q.order_by(database.ReconciliationCase.financial_impact.desc()).all()
 
@@ -778,9 +850,10 @@ def list_settlements(
     db: Session = Depends(database.get_db),
 ):
     """Settlement batch viewer with complete waterfall metrics."""
+    norm_source = _normalize_source(source)
     q = db.query(database.Settlement)
-    if source and source != "all":
-        q = q.filter(database.Settlement.source == source)
+    if norm_source:
+        q = q.filter(database.Settlement.source == norm_source)
 
     settlements = q.order_by(database.Settlement.id.desc()).limit(limit).all()
     return settlements

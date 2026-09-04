@@ -189,7 +189,7 @@ export default function EvidenceDrawer({
                           "The AI is confident. The system is not."
                         </h4>
                         <p className="text-xs text-content-secondary leading-relaxed">
-                          Gemini investigated the transaction candidate pool and recommended{' '}
+                          The Investigation Engine analyzed the transaction candidate pool and recommended{' '}
                           <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">
                             MATCH with {ai?.confidence ? `${(ai.confidence * 100).toFixed(0)}%` : '97%'} confidence
                           </span>.
@@ -200,7 +200,7 @@ export default function EvidenceDrawer({
                       {/* Visual Progression: VIOLET -> CORAL -> AMBER */}
                       <div className="grid grid-cols-3 gap-2.5 text-center text-xs font-mono">
                         <div className="p-2.5 rounded-md bg-surface border-2 border-[#8B7CFF]/40">
-                          <p className="text-[10px] text-[#7462F5] dark:text-[#A79CFF] uppercase font-bold">1. Gemini LLM</p>
+                          <p className="text-[10px] text-[#7462F5] dark:text-[#A79CFF] uppercase font-bold">1. Investigation Engine</p>
                           <p className="font-bold text-[#7462F5] dark:text-[#A79CFF] mt-0.5">
                             {ai?.confidence ? `${(ai.confidence * 100).toFixed(0)}% MATCH` : '97% MATCH'}
                           </p>
@@ -377,11 +377,12 @@ export default function EvidenceDrawer({
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-[#8B7CFF]" />
                         <span className="text-xs font-bold text-content-primary">
-                          Gemini 2.5 Investigation
+                          AI Investigation
                         </span>
                       </div>
                       {ai?.confidence !== undefined && (
                         <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono text-content-muted">AI Confidence:</span>
                           <div className="w-16 h-1.5 bg-surface-sunken rounded-full overflow-hidden border border-border">
                             <div
                               className="h-full bg-[#8B7CFF] rounded-full"
@@ -397,7 +398,7 @@ export default function EvidenceDrawer({
 
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="text-content-muted">AI Recommendation:</span>
+                        <span className="text-content-muted">Investigation Recommendation:</span>
                         <span className="font-mono font-bold text-content-primary px-2 py-0.5 rounded bg-surface-sunken border border-border">
                           {ai?.recommendation || 'NOT_INVOKED'}
                         </span>
@@ -422,6 +423,14 @@ export default function EvidenceDrawer({
                           </ul>
                         </div>
                       )}
+
+                      {/* Technical Transparency & Model Audit Details */}
+                      <div className="pt-2.5 mt-2 border-t border-border/70 text-[10px] font-mono text-content-muted flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <span>Engine: <strong className="text-content-secondary font-semibold">Investigation Engine</strong></span>
+                        <span>Provider: <strong className="text-content-secondary font-semibold">Google</strong></span>
+                        <span>Model: <strong className="text-content-secondary font-semibold">Gemini 2.5</strong></span>
+                        <span>Status: <strong className="text-content-secondary font-semibold">{ai?.recommendation ? 'Completed' : 'Not Invoked'}</strong></span>
+                      </div>
                     </div>
                   </div>
 

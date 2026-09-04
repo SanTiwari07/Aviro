@@ -47,7 +47,7 @@ export default function Ask({ onOpenCase }: AskProps) {
       id: 'welcome',
       role: 'assistant',
       content:
-        'ARIVO GROUNDED AI FINANCE COPILOT\n\n' +
+        'ARIVO INVESTIGATION COPILOT\n\n' +
         'I answer financial control queries grounded strictly on verified database records and our 6 indexed policy documents.\n\n' +
         'Select a prompt below or type any financial investigation question:',
       recommended_actions: [
@@ -131,9 +131,9 @@ export default function Ask({ onOpenCase }: AskProps) {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-content-primary tracking-tight">
-                Ask Arivo — Grounded AI Copilot
+                Ask Arivo — Grounded Investigation Copilot
               </h2>
-              <StatusBadge status="AI" label="GEMINI 2.5" size="sm" />
+              <StatusBadge status="INVESTIGATION COPILOT" label="INVESTIGATION COPILOT" size="sm" />
             </div>
             <p className="text-xs text-content-muted font-mono mt-0.5">
               Strictly grounded on verified SQLite records + RAG Policy Knowledge Base. No raw hallucinations.
@@ -187,7 +187,7 @@ export default function Ask({ onOpenCase }: AskProps) {
                     <div className="flex items-center gap-2">
                       <Cpu className="w-3.5 h-3.5 text-[#8B7CFF]" />
                       <span className="text-content-primary font-semibold">
-                        ARIVO COPILOT (GEMINI 2.5)
+                        ARIVO INVESTIGATION COPILOT
                       </span>
                     </div>
                     {m.grounded && (

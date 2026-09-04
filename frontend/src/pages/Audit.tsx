@@ -94,9 +94,9 @@ export default function Audit() {
       id: 7,
       name: 'AI Schema & Decision Conformance',
       formula: 'Status ∈ {MATCHED, REVIEW, EXCEPTION} ∧ 0.0 <= Conf <= 1.0',
-      desc: 'All Gemini responses are strictly validated against Pydantic schemas with hallucination guards.',
+      desc: 'All Investigation Engine responses are strictly validated against Pydantic schemas with hallucination guards.',
       status: controlHealth?.checks?.ai_schema_validity?.status || 'PASS',
-      detail: 'No hallucinated IDs permitted. Fallback to deterministic review if schema violated.',
+      detail: 'Provider: Google (Gemini 2.5). No hallucinated IDs permitted; fallback to deterministic review if schema violated.',
     },
   ];
 

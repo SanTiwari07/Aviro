@@ -2,9 +2,26 @@ import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, DateTime, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Set database path relative to project root
-db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "arivo.db")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
+import logging
+
+logger = logging.getLogger("arivo.database")
+
+# Ensure one single authoritative absolute database path rooted at the project root
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+default_db_path = os.path.abspath(os.path.join(project_root, "arivo.db"))
+
+raw_db_url = os.getenv("DATABASE_URL", "").strip()
+if not raw_db_url or raw_db_url in ("sqlite:///./arivo.db", "sqlite:///arivo.db"):
+    DATABASE_URL = f"sqlite:///{default_db_path}"
+elif raw_db_url.startswith("sqlite:///"):
+    path_part = raw_db_url.replace("sqlite:///", "")
+    if not os.path.isabs(path_part):
+        path_part = os.path.abspath(os.path.join(project_root, path_part.lstrip("./")))
+    DATABASE_URL = f"sqlite:///{path_part}"
+else:
+    DATABASE_URL = raw_db_url
+
+logger.info(f"[database] Authoritative database URL: {DATABASE_URL}")
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
