@@ -10,8 +10,9 @@ import {
   TrendingUp,
   Cpu,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import StatusBadge from '../components/StatusBadge';
 
 interface BenchmarkProps {
   onOpenCase: (caseId: string) => void;
@@ -39,12 +40,14 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
   const demo = data?.flagship_safety_demo;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-tprimary tracking-tight">Controlled Synthetic Benchmark</h2>
-          <p className="text-xs text-tmuted mt-0.5">
+          <h2 className="text-xl font-bold text-content-primary tracking-tight">
+            Controlled Synthetic Benchmark
+          </h2>
+          <p className="text-xs text-content-muted mt-0.5 font-mono">
             Empirical evaluation against ground truth: Naive Rule Engine vs ARIVO Invariant-Governed Controller.
           </p>
         </div>
@@ -52,15 +55,15 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
         <button
           onClick={loadBenchmark}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs font-semibold text-content-secondary hover:text-content-primary shadow-subtle transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand' : ''}`} />
           <span>Re-run Evaluation</span>
         </button>
       </div>
 
       {loading && !data && (
-        <div className="p-12 text-center text-tmuted text-xs font-mono">
+        <div className="p-12 text-center text-content-muted text-xs font-mono">
           Evaluating 5,114 ground-truth transaction candidates across 7 invariants...
         </div>
       )}
@@ -68,114 +71,130 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
       {data && (
         <>
           {/* Flagship AI Safety Showcase Card */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-navy-850 via-navy-800 to-navy-850 border border-status-review/40 shadow-elevated space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-navy-700">
+          <div className="p-6 rounded-lg bg-surface border-l-4 border-l-[#8B7CFF] border border-border shadow-card space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-status-review" />
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-status-review">
-                  Flagship AI Safety Demo
-                </span>
+                <StatusBadge status="FLAGSHIP" label="FLAGSHIP AI SAFETY DEMO" size="md" />
               </div>
-              <span className="text-xs font-mono text-tmuted">
-                Entity: {demo?.record_id || 'PAY_FLAGSHIP_001'} • Amount: {demo?.amount_inr || '₹2,49,999.00'}
+              <span className="text-xs font-mono text-content-muted">
+                Entity: <strong className="text-content-primary font-bold">{demo?.record_id || 'PAY_FLAGSHIP_001'}</strong> • Amount: <strong className="text-[#D98A26] dark:text-[#FFB454] font-bold">{demo?.amount_inr || '₹2,49,999.00'}</strong>
               </span>
             </div>
 
-            <div className="bg-navy-950/70 p-4 rounded-xl border border-navy-700 space-y-2">
-              <h3 className="text-base font-bold text-tprimary">
-                "The AI is confident. The system is not."
-              </h3>
-              <p className="text-xs text-tsecondary leading-relaxed max-w-3xl">
+            <div className="bg-surface-sunken p-4 rounded-lg border border-border space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-content-primary tracking-tight">
+                  "The AI is confident. The system is not."
+                </h3>
+              </div>
+              <p className="text-xs text-content-secondary leading-relaxed max-w-3xl">
                 A high-value ₹2,49,999.00 transaction encountered two identical date and amount settlement candidates.
-                Gemini recommended <span className="text-status-matched font-bold">MATCH with 97% confidence</span> based on surrounding narrative context.
-                However, Arivo's Control Gate vetoed the match, holding the transaction in <span className="text-status-review font-bold">REVIEW</span> because Invariant 6 strictly forbids automated finalization on ambiguous high-value disbursements.
+                Gemini recommended <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">MATCH with 97% confidence</span> based on narrative context.
+                However, Arivo's Control Gate vetoed the match, holding the transaction in <span className="text-[#D98A26] dark:text-[#FFB454] font-bold">REVIEW</span> because Invariant 6 strictly forbids automated finalization on ambiguous high-value disbursements.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
-              <div className="p-3 bg-navy-900 rounded-lg border border-navy-700 text-center">
-                <span className="text-[10px] uppercase font-mono text-tmuted block">Gemini 2.5 LLM</span>
-                <span className="font-mono font-bold text-status-matched text-sm">
-                  {demo?.gemini_decision || 'MATCHED (97%)'}
-                </span>
+            {/* Visual Progression: VIOLET -> CORAL -> AMBER */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
+              {/* Step 1: Gemini AI (Violet) */}
+              <div className="p-3.5 bg-surface-elevated rounded-lg border-2 border-[#8B7CFF]/40 text-center space-y-1">
+                <div className="flex items-center justify-center gap-1.5 text-[#7462F5] dark:text-[#A79CFF] text-[10px] uppercase font-mono font-bold">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>1. Gemini 2.5 LLM</span>
+                </div>
+                <div className="font-mono font-bold text-[#7462F5] dark:text-[#A79CFF] text-sm">
+                  {demo?.gemini_decision || 'MATCH (97% Conf)'}
+                </div>
+                <span className="text-[10px] text-content-muted block">AI Suggestion Only</span>
               </div>
 
-              <div className="p-3 bg-navy-900 rounded-lg border border-status-exception/30 text-center">
-                <span className="text-[10px] uppercase font-mono text-tmuted block">Control Gate</span>
-                <span className="font-mono font-bold text-status-exception text-sm">
+              {/* Step 2: Control Gate (Coral) */}
+              <div className="p-3.5 bg-surface-elevated rounded-lg border-2 border-[#FF647C]/40 text-center space-y-1">
+                <div className="flex items-center justify-center gap-1.5 text-[#E03A53] dark:text-[#FF647C] text-[10px] uppercase font-mono font-bold">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>2. Control Gate</span>
+                </div>
+                <div className="font-mono font-bold text-[#E03A53] dark:text-[#FF647C] text-sm">
                   {demo?.control_gate_verdict || 'BLOCK (Invariant 6)'}
-                </span>
+                </div>
+                <span className="text-[10px] text-content-muted block">Deterministic Override</span>
               </div>
 
-              <div className="p-3 bg-navy-900 rounded-lg border border-status-review/30 text-center">
-                <span className="text-[10px] uppercase font-mono text-tmuted block">Arivo Final Status</span>
-                <span className="font-mono font-bold text-status-review text-sm">
-                  {demo?.arivo_final_status || 'REVIEW'}
-                </span>
+              {/* Step 3: Arivo Final Decision (Amber) */}
+              <div className="p-3.5 bg-surface-elevated rounded-lg border-2 border-[#FFB454]/50 text-center space-y-1">
+                <div className="flex items-center justify-center gap-1.5 text-[#D98A26] dark:text-[#FFB454] text-[10px] uppercase font-mono font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>3. Final Decision</span>
+                </div>
+                <div className="font-mono font-bold text-[#D98A26] dark:text-[#FFB454] text-sm">
+                  {demo?.arivo_final_status || 'REVIEW REQUIRED'}
+                </div>
+                <span className="text-[10px] text-content-muted block">Human Controller Verification</span>
               </div>
 
+              {/* Action Button */}
               <button
                 onClick={() => onOpenCase('CASE_PAY_FLAGSHIP_001')}
-                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-brand-blue hover:bg-brand-hover text-white text-xs font-semibold shadow-card transition-colors"
+                className="w-full h-full min-h-[72px] flex items-center justify-center gap-2 p-3 rounded-lg bg-brand hover:bg-brand-hover text-white text-xs font-semibold shadow-card transition-all active:scale-[0.98]"
               >
-                <span>Inspect in Drawer</span>
+                <span>Inspect Forensic Drawer</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Head-to-Head Comparison Grid */}
-          <div className="p-5 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-navy-700">
+          <div className="p-5 rounded-lg bg-surface border border-border shadow-card space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
               <div>
-                <h3 className="text-sm font-bold text-tprimary">Controlled Benchmark Metrics vs Baseline</h3>
-                <p className="text-xs text-tmuted">
+                <h3 className="text-sm font-bold text-content-primary">
+                  Controlled Benchmark Metrics vs Baseline
+                </h3>
+                <p className="text-xs text-content-muted">
                   Empirical evaluation of false-positives and capital protection across 5,114 ground-truth cases.
                 </p>
               </div>
-              <span className="text-xs font-mono text-status-matched font-bold">
-                0 FALSE AUTO-MATCHES
-              </span>
+              <StatusBadge status="PASS" label="0 FALSE AUTO-MATCHES" size="sm" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Baseline Card */}
-              <div className="p-4 rounded-xl bg-navy-900 border border-navy-700/80 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-navy-700/60">
-                  <span className="text-xs font-bold text-tsecondary">Naive Rule Engine (Baseline)</span>
-                  <span className="text-[10px] uppercase font-mono text-status-exception px-2 py-0.5 rounded bg-status-exception/10 border border-status-exception/30">
-                    High Risk
+              <div className="p-4 rounded-lg bg-surface-sunken border border-border space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
+                  <span className="text-xs font-bold text-content-secondary">
+                    Naive Rule Engine (Baseline)
                   </span>
+                  <StatusBadge status="BLOCK" label="HIGH RISK" size="sm" />
                 </div>
 
                 <div className="space-y-2 text-xs font-mono">
                   <div className="flex justify-between">
-                    <span className="text-tmuted">False Auto-Matches:</span>
-                    <span className="text-status-exception font-bold tabular-nums">
+                    <span className="text-content-muted">False Auto-Matches:</span>
+                    <span className="text-[#E03A53] dark:text-[#FF647C] font-bold tabular-nums">
                       {b?.false_matches_count || 47} records
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">Precision:</span>
-                    <span className="text-tsecondary tabular-nums">
+                    <span className="text-content-muted">Precision:</span>
+                    <span className="text-content-secondary tabular-nums">
                       {formatPercent(b?.precision || 0.988)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">Recall:</span>
-                    <span className="text-tsecondary tabular-nums">
+                    <span className="text-content-muted">Recall:</span>
+                    <span className="text-content-secondary tabular-nums">
                       {formatPercent(b?.recall || 0.974)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">F1-Score:</span>
-                    <span className="text-tsecondary tabular-nums">
+                    <span className="text-content-muted">F1-Score:</span>
+                    <span className="text-content-secondary tabular-nums">
                       {formatPercent(b?.f1_score || 0.981)}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-1 border-t border-navy-800">
-                    <span className="text-tmuted">Erroneous Capital Disbursed:</span>
-                    <span className="text-status-exception font-bold tabular-nums">
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="text-content-muted">Erroneous Capital Disbursed:</span>
+                    <span className="text-[#E03A53] dark:text-[#FF647C] font-bold tabular-nums">
                       {formatINR(b?.erroneous_capital_disbursed || 11750000)}
                     </span>
                   </div>
@@ -183,47 +202,47 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
               </div>
 
               {/* ARIVO Card */}
-              <div className="p-4 rounded-xl bg-navy-800/80 border border-brand-blue/30 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-navy-700/60">
+              <div className="p-4 rounded-lg bg-surface border-2 border-brand/40 shadow-card space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-tprimary">ARIVO Invariant Controller</span>
-                    <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-brand-blue/20 text-brand-blue font-bold">
-                      ENGINE
+                    <span className="text-xs font-bold text-content-primary">
+                      ARIVO Invariant Controller
+                    </span>
+                    <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-brand/15 text-brand font-bold">
+                      ACTIVE ENGINE
                     </span>
                   </div>
-                  <span className="text-[10px] uppercase font-mono text-status-matched px-2 py-0.5 rounded bg-status-matched/10 border border-status-matched/30 font-bold">
-                    Zero Error
-                  </span>
+                  <StatusBadge status="PASS" label="ZERO ERROR" size="sm" />
                 </div>
 
                 <div className="space-y-2 text-xs font-mono">
                   <div className="flex justify-between">
-                    <span className="text-tmuted">False Auto-Matches:</span>
-                    <span className="text-status-matched font-bold tabular-nums text-sm">
+                    <span className="text-content-muted">False Auto-Matches:</span>
+                    <span className="text-status-mint font-bold tabular-nums text-sm">
                       0 records (100% Protected)
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">Precision:</span>
-                    <span className="text-status-matched font-bold tabular-nums">
+                    <span className="text-content-muted">Precision:</span>
+                    <span className="text-status-mint font-bold tabular-nums">
                       {formatPercent(a?.precision || 1.0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">Recall:</span>
-                    <span className="text-tprimary font-semibold tabular-nums">
+                    <span className="text-content-muted">Recall:</span>
+                    <span className="text-content-primary font-semibold tabular-nums">
                       {formatPercent(a?.recall || 0.996)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-tmuted">F1-Score:</span>
-                    <span className="text-tprimary font-semibold tabular-nums">
+                    <span className="text-content-muted">F1-Score:</span>
+                    <span className="text-content-primary font-semibold tabular-nums">
                       {formatPercent(a?.f1_score || 0.998)}
                     </span>
                   </div>
-                  <div className="flex justify-between pt-1 border-t border-navy-700">
-                    <span className="text-tmuted">Capital Protected from Error:</span>
-                    <span className="text-status-matched font-bold tabular-nums text-sm">
+                  <div className="flex justify-between pt-2 border-t border-border">
+                    <span className="text-content-muted">Capital Protected from Error:</span>
+                    <span className="text-status-mint font-bold tabular-nums text-sm">
                       {formatINR(ai?.exposure_protected_paise || 14285000)}
                     </span>
                   </div>

@@ -8,7 +8,10 @@ import {
   Cpu,
   Layers,
   ArrowRight,
+  Zap,
 } from 'lucide-react';
+import MetricCard from '../components/MetricCard';
+import StatusBadge from '../components/StatusBadge';
 
 interface RunRecord {
   id: number;
@@ -53,12 +56,14 @@ export default function Runs() {
       : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-tprimary tracking-tight">Reconciliation Runs History</h2>
-          <p className="text-xs text-tmuted mt-0.5">
+          <h2 className="text-xl font-bold text-content-primary tracking-tight">
+            Reconciliation Runs History
+          </h2>
+          <p className="text-xs text-content-muted mt-0.5 font-mono">
             Immutable execution ledger recording every reconciliation pipeline cycle with timing and telemetry.
           </p>
         </div>
@@ -66,46 +71,46 @@ export default function Runs() {
         <button
           onClick={loadRuns}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs font-semibold text-content-secondary hover:text-content-primary shadow-subtle transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand' : ''}`} />
           <span>Refresh Run Logs</span>
         </button>
       </div>
 
       {/* KPI Ribbon */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Total Execution Cycles</span>
-          <p className="text-2xl font-bold font-mono text-tprimary tabular-nums">
-            {formatNumber(totalRuns)}
-          </p>
-          <span className="text-[11px] text-tmuted block">Audit-logged pipeline runs</span>
-        </div>
+        <MetricCard
+          label="Total Execution Cycles"
+          value={formatNumber(totalRuns)}
+          subValue="Audit-logged pipeline runs"
+          accent="blue"
+          icon={<History className="w-4 h-4 text-brand" />}
+        />
 
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Average Processing Speed</span>
-          <p className="text-2xl font-bold font-mono text-brand-blue tabular-nums">
-            {formatNumber(avgThroughput)} txns/sec
-          </p>
-          <span className="text-[11px] text-tmuted block">High throughput batch engine</span>
-        </div>
+        <MetricCard
+          label="Average Processing Speed"
+          value={`${formatNumber(avgThroughput)} txns/s`}
+          subValue="Deterministic batch engine"
+          accent="mint"
+          icon={<Zap className="w-4 h-4 text-status-mint" />}
+        />
 
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Average Execution Time</span>
-          <p className="text-2xl font-bold font-mono text-status-matched tabular-nums">
-            {avgDuration} ms
-          </p>
-          <span className="text-[11px] text-tmuted block">Bounded latency per cycle</span>
-        </div>
+        <MetricCard
+          label="Average Execution Time"
+          value={`${avgDuration} ms`}
+          subValue="Bounded latency per cycle"
+          accent="neutral"
+          icon={<Clock className="w-4 h-4 text-content-muted" />}
+        />
       </div>
 
       {/* Runs Table */}
-      <div className="rounded-xl bg-navy-850 border border-navy-700/80 shadow-card overflow-hidden">
+      <div className="rounded-lg bg-surface border border-border shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className="border-b border-navy-700 bg-navy-900/80 text-tmuted text-[10px] uppercase">
+              <tr className="border-b border-border bg-surface-sunken text-content-muted text-[10px] uppercase tracking-wider sticky top-0">
                 <th className="py-3 px-4">Run ID</th>
                 <th className="py-3 px-4">Workspace</th>
                 <th className="py-3 px-4 text-right">Processed</th>
@@ -116,46 +121,46 @@ export default function Runs() {
                 <th className="py-3 px-4">Timestamp</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-navy-700/50">
+            <tbody className="divide-y divide-border/60">
               {loading && runs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-tmuted">
+                  <td colSpan={8} className="py-12 text-center text-content-muted">
                     Loading execution history...
                   </td>
                 </tr>
               ) : runs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-tmuted">
+                  <td colSpan={8} className="py-12 text-center text-content-muted">
                     No run logs found in database.
                   </td>
                 </tr>
               ) : (
                 runs.map((r) => (
-                  <tr key={r.run_id || r.id} className="hover:bg-navy-800/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-tprimary">
+                  <tr key={r.run_id || r.id} className="hover:bg-surface-elevated transition-colors">
+                    <td className="py-3 px-4 font-bold text-content-primary">
                       {r.run_id}
                     </td>
-                    <td className="py-3 px-4 text-tsecondary">
-                      <span className="text-[11px] px-2 py-0.5 rounded bg-navy-900 border border-navy-700">
+                    <td className="py-3 px-4 text-content-secondary">
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-surface-sunken border border-border">
                         {r.source}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right text-tprimary font-bold tabular-nums">
+                    <td className="py-3 px-4 text-right text-content-primary font-bold tabular-nums">
                       {formatNumber(r.records_processed)}
                     </td>
-                    <td className="py-3 px-4 text-right text-status-matched font-bold tabular-nums">
+                    <td className="py-3 px-4 text-right text-status-mint font-bold tabular-nums">
                       {formatNumber(r.matched)}
                     </td>
-                    <td className="py-3 px-4 text-right text-status-review font-semibold tabular-nums">
+                    <td className="py-3 px-4 text-right text-[#D98A26] dark:text-[#FFB454] font-semibold tabular-nums">
                       {formatNumber(r.review)}
                     </td>
-                    <td className="py-3 px-4 text-right text-status-exception font-semibold tabular-nums">
+                    <td className="py-3 px-4 text-right text-[#E03A53] dark:text-[#FF647C] font-semibold tabular-nums">
                       {formatNumber(r.exception)}
                     </td>
-                    <td className="py-3 px-4 text-right text-tmuted tabular-nums">
+                    <td className="py-3 px-4 text-right text-content-muted tabular-nums">
                       {r.duration_ms} ms
                     </td>
-                    <td className="py-3 px-4 text-tmuted">
+                    <td className="py-3 px-4 text-content-muted">
                       {formatDate(r.timestamp)}
                     </td>
                   </tr>

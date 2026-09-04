@@ -1,5 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import arivoLogo from '../assets/arivo-logo.png';
+import arivoName from '../assets/arivo-name.png';
 import {
   LayoutDashboard,
   FileSpreadsheet,
@@ -36,70 +38,78 @@ export default function Sidebar({
     { label: 'Cash Position', path: '/cash-position', icon: TrendingUp },
     { label: 'Runs History', path: '/runs', icon: History },
     { label: 'Audit & Controls', path: '/audit', icon: ShieldCheck },
-    { label: 'Ask Arivo', path: '/ask', icon: Terminal },
+    { label: 'Ask Arivo', path: '/ask', icon: Terminal, badge: 'AI' },
     { label: 'Benchmark', path: '/benchmark', icon: Scale },
   ];
 
   return (
-    <aside className="w-64 bg-navy-900 border-r border-navy-700/80 flex flex-col h-screen sticky top-0 select-none">
+    <aside className="w-64 bg-[#012652] text-slate-100 flex flex-col h-screen sticky top-0 select-none border-r border-[#0D94FB]/20 shadow-elevated z-20">
       {/* Brand Header */}
-      <div className="p-4 border-b border-navy-700/80">
+      <div className="p-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-navy-700 flex items-center justify-center font-mono font-bold text-sm text-white shadow-card">
-              AR
-            </div>
-            <div>
+          <NavLink to="/" className="flex items-center gap-2.5 min-w-0 group" title="ARIVO Enterprise AI Finance">
+            <img
+              src={arivoLogo}
+              alt="ARIVO Logo"
+              className="h-8 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform"
+            />
+            <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-wider text-tprimary">ARIVO</span>
-                <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-brand-blue/15 text-brand-blue font-semibold border border-brand-blue/30">
+                <img
+                  src={arivoName}
+                  alt="ARIVO"
+                  className="h-5 w-auto object-contain shrink-0 brightness-[4.8]"
+                />
+                <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-[#0D94FB]/25 text-[#0D94FB] font-bold border border-[#0D94FB]/40 shrink-0">
                   CONTROLLER
                 </span>
               </div>
-              <p className="text-[11px] text-tmuted font-medium">Enterprise AI Finance</p>
+              <p className="text-[10px] text-slate-300 font-medium truncate mt-0.5">
+                Enterprise AI Finance
+              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5" title="System Operational">
-            <span className="w-2 h-2 rounded-full bg-status-matched animate-pulse" />
+          </NavLink>
+          <div className="flex items-center gap-1" title="Control Gate Active">
+            <span className="w-2 h-2 rounded-full bg-status-mint animate-pulse" />
           </div>
         </div>
 
         {/* Workspace Switcher */}
-        <div className="mt-4">
-          <label className="text-[10px] font-mono uppercase tracking-wider text-tmuted block mb-1.5">
+        <div className="mt-3.5">
+          <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
             Active Workspace
           </label>
           <div className="relative">
             <select
               value={currentSource}
               onChange={(e) => onSourceChange(e.target.value)}
-              className="w-full bg-navy-850 border border-navy-700 text-tprimary text-xs rounded-lg px-2.5 py-2 appearance-none focus:outline-none focus:border-brand-blue transition-colors cursor-pointer"
+              className="w-full bg-[#071E3D] hover:bg-[#0A264D] border border-white/15 text-slate-200 text-xs rounded-md px-2.5 py-1.5 appearance-none focus:outline-none focus:border-[#0D94FB] transition-colors cursor-pointer font-sans"
             >
               <option value="synthetic">Synthetic Benchmark (5,114 txns)</option>
               <option value="razorpay">Razorpay Test Store</option>
               <option value="all">Unified Global Ledger (All)</option>
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-tmuted absolute right-2.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2 pointer-events-none" />
           </div>
         </div>
 
-        {/* Global Quick Search Button */}
+        {/* Quick Search Button */}
         <button
           onClick={onOpenCommandPalette}
-          className="mt-3 w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-navy-850/80 hover:bg-navy-800 border border-navy-700 text-xs text-tmuted transition-colors group"
+          className="mt-2.5 w-full flex items-center justify-between px-2.5 py-1.5 rounded-md bg-[#071E3D]/80 hover:bg-[#0A264D] border border-white/10 text-xs text-slate-300 hover:text-white transition-colors group"
         >
           <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-tmuted group-hover:text-tsecondary" />
-            <span className="text-xs group-hover:text-tsecondary">Quick Switcher...</span>
+            <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-200" />
+            <span className="text-xs">Quick Switcher...</span>
           </div>
-          <kbd className="font-mono text-[10px] px-1 py-0.5 rounded bg-navy-900 border border-navy-700 text-tmuted">
+          <kbd className="font-mono text-[10px] px-1 py-0.2 rounded bg-[#012652] border border-white/20 text-slate-400">
             ⌘K
           </kbd>
         </button>
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -107,46 +117,51 @@ export default function Sidebar({
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                `flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all ${
                   isActive
-                    ? 'bg-brand-blue/15 text-brand-blue border border-brand-blue/30 font-semibold'
-                    : 'text-tsecondary hover:bg-navy-800/60 hover:text-tprimary border border-transparent'
+                    ? 'bg-[#0D94FB]/18 text-white font-semibold border-l-2 border-[#0D94FB] shadow-subtle'
+                    : 'text-slate-300 hover:bg-white/8 hover:text-white border-l-2 border-transparent'
                 }`
               }
             >
-              <div className="flex items-center gap-3">
-                <Icon className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <Icon className="w-4 h-4 opacity-80" />
                 <span>{item.label}</span>
               </div>
+              {item.badge && (
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#8B7CFF]/20 text-[#A79CFF] border border-[#8B7CFF]/30 font-bold">
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Institutional Telemetry Footer */}
-      <div className="p-3 border-t border-navy-700/80 bg-navy-950/60 text-[11px] space-y-2 font-mono">
-        <div className="flex items-center justify-between text-tmuted">
+      {/* Institutional System Health Telemetry Footer */}
+      <div className="p-3 border-t border-white/10 bg-[#001D40] text-[11px] space-y-2 font-mono">
+        <div className="flex items-center justify-between text-slate-300">
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-status-matched" />
-            <span className="text-tsecondary">Control Gate</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-status-mint" />
+            <span className="text-slate-200">Control Gate</span>
           </div>
-          <span className="text-status-matched font-semibold">7/7 Invariants</span>
+          <span className="text-status-mint font-semibold">7/7 Invariants</span>
         </div>
 
-        <div className="flex items-center justify-between text-tmuted">
+        <div className="flex items-center justify-between text-slate-300">
           <div className="flex items-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-brand-blue" />
-            <span className="text-tsecondary">AI Engine</span>
+            <Cpu className="w-3.5 h-3.5 text-[#8B7CFF]" />
+            <span className="text-slate-200">AI Engine</span>
           </div>
-          <span className="text-tprimary">Gemini 2.5</span>
+          <span className="text-[#A79CFF] font-medium">Gemini 2.5</span>
         </div>
 
-        <div className="flex items-center justify-between text-tmuted">
+        <div className="flex items-center justify-between text-slate-300">
           <div className="flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-status-review" />
-            <span className="text-tsecondary">Precision</span>
+            <Database className="w-3.5 h-3.5 text-brand" />
+            <span className="text-slate-200">Precision</span>
           </div>
-          <span className="text-tprimary">0 Paise Tol.</span>
+          <span className="text-slate-100">0 Paise Tol.</span>
         </div>
       </div>
     </aside>

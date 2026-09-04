@@ -13,7 +13,7 @@ import {
   ChevronRight,
   ExternalLink,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import StatusBadge from '../components/StatusBadge';
 
 export default function Audit() {
   const [controlHealth, setControlHealth] = useState<any>(null);
@@ -53,7 +53,7 @@ export default function Audit() {
     {
       id: 2,
       name: 'Settlement Waterfall Arithmetic',
-      formula: 'Expected Net = Gross - Fees - Tax - Refunds - Chargebacks + Adjustments',
+      formula: 'Expected Net = Gross − Fees − Tax − Refunds − Chargebacks + Adjustments',
       desc: 'All settlement batches balance with exact integer paise precision. Unexplained delta must equal 0.',
       status: controlHealth?.checks?.settlement_waterfall?.status || 'PASS',
       detail: controlHealth?.checks?.settlement_waterfall?.message || 'Zero arithmetic variance detected in verified settlement ledger.',
@@ -77,7 +77,7 @@ export default function Audit() {
     {
       id: 5,
       name: 'Currency Consistency',
-      formula: 'Currency == INR (Base Unit: Paise)',
+      formula: 'Currency == INR (Base Unit: Integer Paise)',
       desc: 'Ensures strict currency uniformity across all internal ledgers and cash forecasts.',
       status: controlHealth?.checks?.currency_uniformity?.status || 'PASS',
       detail: 'Cross-currency exchange rates quarantined pending FX confirmation.',
@@ -101,12 +101,14 @@ export default function Audit() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-tprimary tracking-tight">Audit & Invariant Governance</h2>
-          <p className="text-xs text-tmuted mt-0.5">
+          <h2 className="text-xl font-bold text-content-primary tracking-tight">
+            Audit & Invariant Governance
+          </h2>
+          <p className="text-xs text-content-muted mt-0.5 font-mono">
             Continuous verification of the 7 Core Financial Invariants and authoritative RAG Policy Knowledge Base.
           </p>
         </div>
@@ -114,72 +116,63 @@ export default function Audit() {
         <button
           onClick={loadAuditData}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs font-semibold text-content-secondary hover:text-content-primary shadow-subtle transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand' : ''}`} />
           <span>Re-verify Controls</span>
         </button>
       </div>
 
       {/* Top Status Banner */}
-      <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card flex items-center justify-between">
+      <div className="p-4 rounded-lg bg-surface border-l-4 border-l-status-mint border border-border shadow-card flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-status-matched/15 text-status-matched border border-status-matched/30">
+          <div className="p-2.5 rounded-md bg-[#04DB7C]/15 text-[#04DB7C] border border-[#04DB7C]/30">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-tprimary">Institutional Control Gate Status</h3>
-            <p className="text-xs text-tmuted font-mono">
+            <h3 className="text-sm font-bold text-content-primary">
+              Institutional Control Gate Status
+            </h3>
+            <p className="text-xs text-content-muted font-mono">
               All 7 Financial Invariants Verified • Zero Tolerance Policy Active
             </p>
           </div>
         </div>
         <div className="text-right">
-          <span className="text-[10px] font-mono uppercase text-tmuted block">Overall Verdict</span>
-          <span className="font-mono font-bold text-sm text-status-matched px-2 py-0.5 rounded bg-status-matched/10 border border-status-matched/30">
-            ALL PASS
-          </span>
+          <StatusBadge status="PASS" label="ALL 7 INVARIANTS PASS" size="md" />
         </div>
       </div>
 
       {/* Invariant Health Grid */}
       <div className="space-y-3">
-        <h3 className="text-xs font-mono uppercase tracking-wider text-tmuted">
+        <h3 className="text-xs font-mono uppercase tracking-wider text-content-muted font-semibold">
           The 7 Core Financial Invariants
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {invariants.map((inv) => (
             <div
               key={inv.id}
-              className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-2 flex flex-col justify-between"
+              className="p-4 rounded-lg bg-surface border border-border shadow-card space-y-2.5 flex flex-col justify-between hover:shadow-elevated transition-shadow"
             >
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-navy-700/60">
-                  <span className="text-xs font-bold text-tprimary">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
+                  <span className="text-xs font-bold text-content-primary">
                     Invariant {inv.id}: {inv.name}
                   </span>
-                  <span
-                    className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded font-bold border ${
-                      inv.status === 'PASS'
-                        ? 'bg-status-matched/15 text-status-matched border-status-matched/30'
-                        : 'bg-status-exception/15 text-status-exception border-status-exception/30'
-                    }`}
-                  >
-                    {inv.status}
-                  </span>
+                  <StatusBadge status={inv.status} size="sm" />
                 </div>
 
-                <div className="mt-2 font-mono text-[11px] text-brand-blue bg-navy-900/80 p-2 rounded border border-navy-700/60">
+                <div className="mt-2 font-mono text-[11px] text-brand bg-surface-sunken p-2.5 rounded border border-border font-semibold">
                   {inv.formula}
                 </div>
 
-                <p className="text-xs text-tsecondary mt-2 leading-relaxed">
+                <p className="text-xs text-content-secondary mt-2 leading-relaxed">
                   {inv.desc}
                 </p>
               </div>
 
-              <p className="text-[11px] text-tmuted pt-2 border-t border-navy-700/50 font-mono">
+              <p className="text-[11px] text-content-muted pt-2 border-t border-border font-mono">
                 {inv.detail}
               </p>
             </div>
@@ -188,18 +181,20 @@ export default function Audit() {
       </div>
 
       {/* Policy Knowledge Base Browser */}
-      <div className="p-5 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-navy-700">
+      <div className="p-5 rounded-lg bg-surface border border-border shadow-card space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-border">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-brand-blue" />
+            <BookOpen className="w-4 h-4 text-brand" />
             <div>
-              <h3 className="text-sm font-bold text-tprimary">Authoritative RAG Policy Knowledge Base</h3>
-              <p className="text-xs text-tmuted">
+              <h3 className="text-sm font-bold text-content-primary">
+                Authoritative RAG Policy Knowledge Base
+              </h3>
+              <p className="text-xs text-content-muted">
                 Active policies indexed under /knowledge for query routing, citation, and boundary enforcement.
               </p>
             </div>
           </div>
-          <span className="text-xs font-mono text-tmuted">
+          <span className="text-xs font-mono text-content-muted">
             {policies.length} Policies Active
           </span>
         </div>
@@ -215,41 +210,39 @@ export default function Audit() {
                   onClick={() => setSelectedPolicy(pol)}
                   className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-xs transition-colors border ${
                     isSel
-                      ? 'bg-brand-blue/15 text-tprimary border-brand-blue/40 font-semibold'
-                      : 'bg-navy-900 text-tsecondary hover:bg-navy-800 border-navy-700/80'
+                      ? 'bg-brand/12 text-content-primary border-brand/40 font-semibold shadow-subtle'
+                      : 'bg-surface-sunken text-content-secondary hover:bg-surface-elevated border-border'
                   }`}
                 >
                   <div>
-                    <p className="font-semibold">{pol.policy_name}</p>
-                    <p className="text-[10px] font-mono text-tmuted">{pol.doc_name} • v{pol.version}</p>
+                    <p className="font-semibold text-content-primary">{pol.policy_name}</p>
+                    <p className="text-[10px] font-mono text-content-muted">{pol.doc_name} • v{pol.version}</p>
                   </div>
-                  <ChevronRight className={`w-3.5 h-3.5 ${isSel ? 'text-brand-blue' : 'text-tmuted'}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 ${isSel ? 'text-brand' : 'text-content-muted'}`} />
                 </button>
               );
             })}
           </div>
 
           {/* Selected Policy Sections */}
-          <div className="md:col-span-2 bg-navy-900 p-4 rounded-lg border border-navy-700 space-y-3">
+          <div className="md:col-span-2 bg-surface-sunken p-4 rounded-lg border border-border space-y-3">
             {selectedPolicy ? (
               <>
-                <div className="flex items-center justify-between pb-2 border-b border-navy-700/60">
+                <div className="flex items-center justify-between pb-2 border-b border-border">
                   <div>
-                    <h4 className="text-sm font-bold text-tprimary">{selectedPolicy.policy_name}</h4>
-                    <p className="text-xs font-mono text-brand-blue">Document: {selectedPolicy.doc_name} (v{selectedPolicy.version})</p>
+                    <h4 className="text-sm font-bold text-content-primary">{selectedPolicy.policy_name}</h4>
+                    <p className="text-xs font-mono text-brand">Document: {selectedPolicy.doc_name} (v{selectedPolicy.version})</p>
                   </div>
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-status-matched/15 text-status-matched border border-status-matched/30 font-bold">
-                    ACTIVE
-                  </span>
+                  <StatusBadge status="PASS" label="ACTIVE POLICY" size="sm" />
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-mono uppercase text-tmuted">Indexed Sections:</p>
+                  <p className="text-xs font-mono uppercase text-content-muted font-semibold">Indexed Sections:</p>
                   <div className="space-y-1.5">
                     {selectedPolicy.sections?.map((sec: string, idx: number) => (
                       <div
                         key={idx}
-                        className="p-2.5 rounded bg-navy-850 border border-navy-700/80 text-xs font-mono text-tsecondary"
+                        className="p-2.5 rounded bg-surface border border-border text-xs font-mono text-content-secondary"
                       >
                         § {sec}
                       </div>
@@ -258,7 +251,7 @@ export default function Audit() {
                 </div>
               </>
             ) : (
-              <p className="text-xs text-tmuted">Select a policy to view sections.</p>
+              <p className="text-xs text-content-muted">Select a policy to view sections.</p>
             )}
           </div>
         </div>

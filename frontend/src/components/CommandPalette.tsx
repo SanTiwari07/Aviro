@@ -134,21 +134,21 @@ export default function CommandPalette({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="relative w-full max-w-2xl bg-navy-850 border border-navy-700/80 rounded-xl shadow-elevated overflow-hidden z-10"
+            className="relative w-full max-w-2xl bg-surface border border-border rounded-xl shadow-elevated overflow-hidden z-10"
             onKeyDown={handleKeyDown}
           >
             {/* Input Header */}
-            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-navy-700 bg-navy-900/60">
-              <Search className="w-5 h-5 text-tmuted" />
+            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-surface-elevated">
+              <Search className="w-5 h-5 text-content-muted" />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search commands, pages, or paste any Transaction / Settlement ID..."
-                className="w-full bg-transparent text-tprimary placeholder-tmuted text-sm outline-none"
+                className="w-full bg-transparent text-content-primary placeholder-content-muted text-sm outline-none font-sans"
               />
-              <span className="text-[11px] font-mono text-tmuted px-1.5 py-0.5 rounded border border-navy-700 bg-navy-800">
+              <span className="text-[11px] font-mono text-content-muted px-1.5 py-0.5 rounded border border-border bg-surface-sunken">
                 ESC
               </span>
             </div>
@@ -156,7 +156,7 @@ export default function CommandPalette({
             {/* List */}
             <div className="max-h-96 overflow-y-auto p-2 space-y-1">
               {allItems.length === 0 ? (
-                <div className="p-8 text-center text-sm text-tmuted">
+                <div className="p-8 text-center text-sm text-content-muted">
                   No matching commands or entities found for "{query}".
                 </div>
               ) : (
@@ -177,14 +177,14 @@ export default function CommandPalette({
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-colors ${
                         isSelected
-                          ? 'bg-navy-750 text-tprimary border border-brand-blue/30'
-                          : 'text-tsecondary hover:bg-navy-800/60 border border-transparent'
+                          ? 'bg-brand/12 text-content-primary border border-brand/35 shadow-subtle'
+                          : 'text-content-secondary hover:bg-surface-elevated border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`p-1.5 rounded-md ${
-                            isSelected ? 'bg-brand-blue/20 text-brand-blue' : 'bg-navy-800 text-tmuted'
+                            isSelected ? 'bg-brand/20 text-brand' : 'bg-surface-sunken text-content-muted border border-border'
                           }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -192,10 +192,10 @@ export default function CommandPalette({
                         <span className="font-medium text-xs sm:text-sm">{item.label}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wider font-mono text-tmuted px-1.5 py-0.5 rounded bg-navy-900 border border-navy-700">
+                        <span className="text-[10px] uppercase tracking-wider font-mono text-content-muted px-1.5 py-0.5 rounded bg-surface-sunken border border-border">
                           {item.category}
                         </span>
-                        {isSelected && <CornerDownLeft className="w-3.5 h-3.5 text-brand-blue" />}
+                        {isSelected && <CornerDownLeft className="w-3.5 h-3.5 text-brand" />}
                       </div>
                     </button>
                   );
@@ -204,12 +204,12 @@ export default function CommandPalette({
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-2 border-t border-navy-700 bg-navy-900/80 flex items-center justify-between text-[11px] text-tmuted">
-              <div className="flex items-center gap-3">
-                <span>Navigate <kbd className="font-mono bg-navy-800 px-1 py-0.5 rounded border border-navy-700">↑↓</kbd></span>
-                <span>Select <kbd className="font-mono bg-navy-800 px-1 py-0.5 rounded border border-navy-700">↵</kbd></span>
+            <div className="px-4 py-2 border-t border-border bg-surface-elevated flex items-center justify-between text-[11px] text-content-muted">
+              <div className="flex items-center gap-3 font-mono">
+                <span>Navigate <kbd className="bg-surface-sunken px-1.5 py-0.5 rounded border border-border">↑↓</kbd></span>
+                <span>Select <kbd className="bg-surface-sunken px-1.5 py-0.5 rounded border border-border">↵</kbd></span>
               </div>
-              <span className="font-mono">ARIVO FINANCIAL SWITCHER</span>
+              <span className="font-mono uppercase tracking-wider text-[10px]">ARIVO FINANCIAL SWITCHER</span>
             </div>
           </motion.div>
         </div>

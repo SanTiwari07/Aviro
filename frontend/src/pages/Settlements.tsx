@@ -9,8 +9,12 @@ import {
   ArrowRight,
   X,
   FileText,
+  Calculator,
+  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import MetricCard from '../components/MetricCard';
+import StatusBadge from '../components/StatusBadge';
 
 interface SettlementsProps {
   currentSource: string;
@@ -44,12 +48,14 @@ export default function Settlements({ currentSource }: SettlementsProps) {
   const totalDelta = settlements.reduce((acc, s) => acc + (s.unexplained_delta || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-tprimary tracking-tight">Settlement Batches & Waterfall</h2>
-          <p className="text-xs text-tmuted mt-0.5">
+          <h2 className="text-xl font-bold text-content-primary tracking-tight">
+            Settlement Batches & Waterfall
+          </h2>
+          <p className="text-xs text-content-muted mt-0.5 font-mono">
             Audit gateway settlement batches, fee deductions, tax withholdings, and bank UTR credit advices.
           </p>
         </div>
@@ -57,56 +63,63 @@ export default function Settlements({ currentSource }: SettlementsProps) {
         <button
           onClick={loadSettlements}
           disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-750 border border-navy-700 text-xs font-semibold text-tprimary transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-surface hover:bg-surface-elevated border border-border text-xs font-semibold text-content-secondary hover:text-content-primary shadow-subtle transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-brand' : ''}`} />
           <span>Refresh Batches</span>
         </button>
       </div>
 
       {/* Waterfall KPI Ribbon */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Gross Settled Volume</span>
-          <p className="text-2xl font-bold font-mono text-tprimary tabular-nums">
-            {formatINR(totalGross)}
-          </p>
-          <span className="text-[11px] text-tmuted block">{settlements.length} settlement batches</span>
-        </div>
+        <MetricCard
+          label="Gross Settled Volume"
+          value={formatINR(totalGross)}
+          subValue={`${settlements.length} settlement batches`}
+          accent="blue"
+        />
 
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Total Fees & Tax Withheld</span>
-          <p className="text-2xl font-bold font-mono text-status-exception tabular-nums">
-            - {formatINR(totalFees + totalTax)}
-          </p>
-          <span className="text-[11px] text-tmuted block">MDR + 18% Statutory GST</span>
-        </div>
+        <MetricCard
+          label="Total Fees & Tax Withheld"
+          value={`- ${formatINR(totalFees + totalTax)}`}
+          subValue="MDR + 18% Statutory GST"
+          accent="coral"
+        />
 
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Net Bank Deposited</span>
-          <p className="text-2xl font-bold font-mono text-status-matched tabular-nums">
-            {formatINR(totalNet)}
-          </p>
-          <span className="text-[11px] text-tmuted block">Cleared via RBI NEFT / RTGS</span>
-        </div>
+        <MetricCard
+          label="Net Bank Deposited"
+          value={formatINR(totalNet)}
+          subValue="Cleared via RBI NEFT / RTGS"
+          accent="mint"
+        />
 
-        <div className="p-4 rounded-xl bg-navy-850 border border-navy-700/80 shadow-card space-y-1">
-          <span className="text-[10px] font-mono uppercase text-tmuted">Waterfall Delta Anomalies</span>
-          <p className={`text-2xl font-bold font-mono tabular-nums ${deltaCount > 0 ? 'text-status-exception' : 'text-status-matched'}`}>
-            {formatINR(totalDelta)}
-          </p>
-          <span className="text-[11px] text-tmuted block">
-            {deltaCount} anomalous batch{deltaCount === 1 ? '' : 'es'} detected
+        <MetricCard
+          label="Waterfall Delta Anomalies"
+          value={formatINR(totalDelta)}
+          subValue={`${deltaCount} anomalous batch${deltaCount === 1 ? '' : 'es'} detected`}
+          accent={deltaCount > 0 ? 'coral' : 'mint'}
+        />
+      </div>
+
+      {/* Formula Explanation Banner */}
+      <div className="p-3.5 rounded-lg bg-surface border border-border shadow-card flex items-center justify-between text-xs font-mono">
+        <div className="flex items-center gap-2.5 text-content-secondary">
+          <Calculator className="w-4 h-4 text-brand flex-shrink-0" />
+          <span>
+            <strong className="text-content-primary">Waterfall Invariant Formula:</strong> Net Amount = Gross Captured − MDR Fees − 18% GST − Refunds − Chargebacks ± Adjustments
           </span>
         </div>
+        <span className="text-[11px] text-content-muted hidden md:inline">
+          Precision: 0 Paise Tolerance
+        </span>
       </div>
 
       {/* Settlements Table */}
-      <div className="rounded-xl bg-navy-850 border border-navy-700/80 shadow-card overflow-hidden">
+      <div className="rounded-lg bg-surface border border-border shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead>
-              <tr className="border-b border-navy-700 bg-navy-900/80 text-tmuted text-[10px] uppercase">
+              <tr className="border-b border-border bg-surface-sunken text-content-muted text-[10px] uppercase tracking-wider sticky top-0">
                 <th className="py-3 px-4">Settlement ID</th>
                 <th className="py-3 px-4 text-right">Gross</th>
                 <th className="py-3 px-4 text-right">Fees</th>
@@ -115,19 +128,19 @@ export default function Settlements({ currentSource }: SettlementsProps) {
                 <th className="py-3 px-4 text-right">Delta</th>
                 <th className="py-3 px-4">Bank UTR</th>
                 <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4 text-right">Inspect</th>
+                <th className="py-3 px-4 text-right">Audit</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-navy-700/50">
+            <tbody className="divide-y divide-border/60">
               {loading && settlements.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                  <td colSpan={9} className="py-12 text-center text-content-muted">
                     Loading settlement batches from database...
                   </td>
                 </tr>
               ) : settlements.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-tmuted">
+                  <td colSpan={9} className="py-12 text-center text-content-muted">
                     No settlement records found.
                   </td>
                 </tr>
@@ -138,42 +151,40 @@ export default function Settlements({ currentSource }: SettlementsProps) {
                     <tr
                       key={s.settlement_id}
                       onClick={() => setSelectedSettlement(s)}
-                      className={`hover:bg-navy-800/80 cursor-pointer transition-colors group ${
-                        hasDelta ? 'bg-status-exception/5' : ''
+                      className={`hover:bg-surface-elevated cursor-pointer transition-colors group ${
+                        hasDelta ? 'bg-[#FF647C]/5 dark:bg-[#FF647C]/10' : ''
                       }`}
                     >
-                      <td className="py-3 px-4 font-bold text-tprimary group-hover:text-brand-blue">
+                      <td className="py-3 px-4 font-bold text-content-primary group-hover:text-brand">
                         {s.settlement_id}
                       </td>
-                      <td className="py-3 px-4 text-right text-tprimary tabular-nums">
+                      <td className="py-3 px-4 text-right text-content-primary tabular-nums">
                         {formatINR(s.gross_amount)}
                       </td>
-                      <td className="py-3 px-4 text-right text-status-exception tabular-nums">
+                      <td className="py-3 px-4 text-right text-[#E03A53] dark:text-[#FF647C] tabular-nums">
                         - {formatINR(s.fees)}
                       </td>
-                      <td className="py-3 px-4 text-right text-status-exception tabular-nums">
+                      <td className="py-3 px-4 text-right text-[#E03A53] dark:text-[#FF647C] tabular-nums">
                         - {formatINR(s.tax)}
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-status-matched tabular-nums">
+                      <td className="py-3 px-4 text-right font-bold text-status-mint tabular-nums">
                         {formatINR(s.net_amount)}
                       </td>
                       <td className="py-3 px-4 text-right tabular-nums">
                         {hasDelta ? (
-                          <span className="font-bold text-status-exception px-1.5 py-0.5 rounded bg-status-exception/15 border border-status-exception/30">
-                            {formatINR(s.unexplained_delta)}
-                          </span>
+                          <StatusBadge status="EXCEPTION" label={formatINR(s.unexplained_delta)} size="sm" />
                         ) : (
-                          <span className="text-tmuted">₹0.00</span>
+                          <span className="text-content-muted text-[11px]">₹0.00</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-tsecondary">
+                      <td className="py-3 px-4 text-content-secondary">
                         {s.utr || 'Pending'}
                       </td>
-                      <td className="py-3 px-4 text-tmuted">
+                      <td className="py-3 px-4 text-content-muted">
                         {formatDate(s.created_at)}
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <span className="text-[11px] text-brand-blue group-hover:underline flex items-center justify-end gap-1">
+                        <span className="text-[11px] text-brand font-semibold group-hover:underline inline-flex items-center justify-end gap-1">
                           Waterfall <ArrowRight className="w-3 h-3" />
                         </span>
                       </td>
@@ -191,82 +202,116 @@ export default function Settlements({ currentSource }: SettlementsProps) {
         {selectedSettlement && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setSelectedSettlement(null)}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-lg bg-navy-850 border border-navy-700 rounded-xl shadow-elevated p-6 z-10 space-y-4"
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              className="relative w-full max-w-lg bg-surface border border-border rounded-xl shadow-elevated p-6 z-10 space-y-4"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-navy-700">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-brand-blue" />
-                  <span className="font-mono font-bold text-sm text-tprimary">
-                    Waterfall: {selectedSettlement.settlement_id}
+                  <FileText className="w-4 h-4 text-brand" />
+                  <span className="font-mono font-bold text-sm text-content-primary">
+                    Settlement Waterfall: {selectedSettlement.settlement_id}
                   </span>
                 </div>
                 <button
                   onClick={() => setSelectedSettlement(null)}
-                  className="p-1 rounded text-tmuted hover:text-tprimary"
+                  className="p-1 rounded-md text-content-muted hover:text-content-primary hover:bg-surface-elevated transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="space-y-2 text-xs font-mono">
-                <div className="flex justify-between py-1 border-b border-navy-800">
-                  <span className="text-tsecondary">Gross Captured Volume:</span>
-                  <span className="font-bold text-tprimary tabular-nums">
-                    + {formatINR(selectedSettlement.gross_amount)}
+              {/* Arithmetic Waterfall Breakdown */}
+              <div className="space-y-2.5 text-xs font-mono bg-surface-sunken p-4 rounded-lg border border-border">
+                <div className="flex justify-between py-1.5 border-b border-border/80">
+                  <span className="text-content-secondary flex items-center gap-2">
+                    <span className="w-4 text-center font-bold text-status-mint">+</span>
+                    <span>Gross Captured Volume</span>
+                  </span>
+                  <span className="font-bold text-content-primary tabular-nums">
+                    {formatINR(selectedSettlement.gross_amount)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-navy-800">
-                  <span className="text-tmuted">MDR Gateway Fees:</span>
-                  <span className="text-status-exception tabular-nums">
-                    - {formatINR(selectedSettlement.fees)}
+
+                <div className="flex justify-between py-1.5 border-b border-border/80">
+                  <span className="text-content-muted flex items-center gap-2">
+                    <span className="w-4 text-center font-bold text-[#E03A53] dark:text-[#FF647C]">−</span>
+                    <span>MDR Gateway Processing Fees</span>
+                  </span>
+                  <span className="text-[#E03A53] dark:text-[#FF647C] tabular-nums font-medium">
+                    {formatINR(selectedSettlement.fees)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-navy-800">
-                  <span className="text-tmuted">Statutory GST (18%):</span>
-                  <span className="text-status-exception tabular-nums">
-                    - {formatINR(selectedSettlement.tax)}
+
+                <div className="flex justify-between py-1.5 border-b border-border/80">
+                  <span className="text-content-muted flex items-center gap-2">
+                    <span className="w-4 text-center font-bold text-[#E03A53] dark:text-[#FF647C]">−</span>
+                    <span>Statutory GST on Fees (18%)</span>
+                  </span>
+                  <span className="text-[#E03A53] dark:text-[#FF647C] tabular-nums font-medium">
+                    {formatINR(selectedSettlement.tax)}
                   </span>
                 </div>
+
                 {selectedSettlement.refunds > 0 && (
-                  <div className="flex justify-between py-1 border-b border-navy-800">
-                    <span className="text-tmuted">Net Refund Deductions:</span>
-                    <span className="text-status-exception tabular-nums">
-                      - {formatINR(selectedSettlement.refunds)}
+                  <div className="flex justify-between py-1.5 border-b border-border/80">
+                    <span className="text-content-muted flex items-center gap-2">
+                      <span className="w-4 text-center font-bold text-[#E03A53] dark:text-[#FF647C]">−</span>
+                      <span>Net Refund Deductions</span>
+                    </span>
+                    <span className="text-[#E03A53] dark:text-[#FF647C] tabular-nums font-medium">
+                      {formatINR(selectedSettlement.refunds)}
                     </span>
                   </div>
                 )}
+
                 {selectedSettlement.chargebacks > 0 && (
-                  <div className="flex justify-between py-1 border-b border-navy-800">
-                    <span className="text-tmuted">Chargeback Deductions:</span>
-                    <span className="text-status-exception tabular-nums">
-                      - {formatINR(selectedSettlement.chargebacks)}
+                  <div className="flex justify-between py-1.5 border-b border-border/80">
+                    <span className="text-content-muted flex items-center gap-2">
+                      <span className="w-4 text-center font-bold text-[#E03A53] dark:text-[#FF647C]">−</span>
+                      <span>Chargeback Deductions</span>
+                    </span>
+                    <span className="text-[#E03A53] dark:text-[#FF647C] tabular-nums font-medium">
+                      {formatINR(selectedSettlement.chargebacks)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between py-2 border-t border-navy-700 font-bold text-sm">
-                  <span className="text-tprimary">Actual Bank Deposited:</span>
-                  <span className="text-status-matched tabular-nums">
-                    = {formatINR(selectedSettlement.net_amount)}
+
+                <div className="flex justify-between py-2.5 border-t-2 border-border font-bold text-sm bg-surface p-2 rounded">
+                  <span className="text-content-primary flex items-center gap-2">
+                    <span className="w-4 text-center font-bold text-brand">=</span>
+                    <span>Actual Bank Credit (Net)</span>
+                  </span>
+                  <span className="text-status-mint tabular-nums text-base">
+                    {formatINR(selectedSettlement.net_amount)}
                   </span>
                 </div>
 
-                {selectedSettlement.unexplained_delta > 0 && (
-                  <div className="p-3 rounded-lg bg-status-exception/15 border border-status-exception/30 flex items-center justify-between text-status-exception font-bold">
-                    <span>UNEXPLAINED ARITHMETIC DELTA:</span>
-                    <span className="tabular-nums">{formatINR(selectedSettlement.unexplained_delta)}</span>
-                  </div>
-                )}
+                {/* Delta Verdict */}
+                <div className="pt-2">
+                  {selectedSettlement.unexplained_delta > 0 ? (
+                    <div className="p-3 rounded-lg bg-[#FF647C]/12 border border-[#FF647C]/30 flex items-center justify-between text-[#E03A53] dark:text-[#FF647C] font-bold">
+                      <span>UNEXPLAINED ARITHMETIC DELTA:</span>
+                      <span className="tabular-nums text-sm">{formatINR(selectedSettlement.unexplained_delta)}</span>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-[#04DB7C]/10 border border-[#04DB7C]/25 flex items-center justify-between text-[#04DB7C] font-semibold text-xs">
+                      <span>Unexplained Delta: ₹0.00</span>
+                      <StatusBadge status="PASS" label="WATERFALL PASS" size="sm" />
+                    </div>
+                  )}
+                </div>
 
-                <div className="pt-2 text-[11px] text-tmuted space-y-1">
-                  <p>Bank Reference (UTR): {selectedSettlement.utr || 'Pending NEFT clearance'}</p>
-                  <p>Settlement Date: {formatDate(selectedSettlement.created_at)}</p>
+                {/* Bank metadata */}
+                <div className="pt-2 text-[11px] text-content-muted space-y-1 border-t border-border/60">
+                  <p>Bank Reference (UTR): <span className="text-content-secondary font-bold">{selectedSettlement.utr || 'Pending NEFT clearance'}</span></p>
+                  <p>Settlement Date: <span className="text-content-secondary">{formatDate(selectedSettlement.created_at)}</span></p>
                 </div>
               </div>
             </motion.div>
