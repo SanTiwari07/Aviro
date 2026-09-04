@@ -64,7 +64,7 @@ def decide_final_status(candidate: Dict[str, Any], control_result: Dict[str, Any
             return "EXCEPTION"
         return "REVIEW"
 
-    # Control passes — check deterministic match method first
+    # Control passes - check deterministic match method first
     match_method = candidate.get("match_method")
     if match_method in ("EXACT_ID", "NORMALIZED_ID", "GROUPED"):
         return "MATCHED"

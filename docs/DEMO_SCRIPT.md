@@ -36,4 +36,4 @@ Show the grounded response using the RAG policy.
 Run `make benchmark` to prove the metrics and safety of the system.
 
 **5:00 - Closing**
-"Know exactly where every rupee went—or know exactly why you don't. Thank you."
+"Know exactly where every rupee went-or know exactly why you don't. Thank you."

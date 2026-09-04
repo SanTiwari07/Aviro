@@ -1,5 +1,5 @@
-# ARIVO — Technical Documentation Hub
-### Razorpay AI Buildathon 2026 — Track 04
+# ARIVO - Technical Documentation Hub
+### Razorpay AI Buildathon 2026 - Track 04
 
 Welcome to the internal documentation for **ARIVO**, an AI Finance Controller built with deterministic financial controls and grounded AI investigation.
 

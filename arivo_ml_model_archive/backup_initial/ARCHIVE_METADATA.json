@@ -1,0 +1,27 @@
+{
+  "archive_timestamp": "2026-09-04T19:21:25+05:30",
+  "reason": "Preserve initial baseline model before resetting the ML training pipeline with canonical generator and zero-leakage candidate ranking.",
+  "original_path": "arivo_ml_model/",
+  "files_archived": [
+    "arivo_reconciliation_xgb.pkl",
+    "features.json",
+    "ml_training_dataset.csv"
+  ],
+  "model_type": "XGBoostClassifier",
+  "features": [
+    "amount_delta",
+    "amount_ratio",
+    "date_delta_days",
+    "merchant_match",
+    "currency_match",
+    "reference_similarity",
+    "candidate_count"
+  ],
+  "dataset_rows": 18753,
+  "known_limitations_of_old_model": [
+    "Candidate count calculation had risk of label leakage across candidate sets.",
+    "Dataset was based on an older unverified snapshot rather than the canonical benchmark dataset.",
+    "Target was not strictly decoupled into true candidate relationship ranking with hard adversarial negatives.",
+    "Did not evaluate ranking metrics (Top-1, Top-3, MRR) or anomaly-slice performance."
+  ]
+}

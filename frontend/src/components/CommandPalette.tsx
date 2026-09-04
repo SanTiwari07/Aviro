@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LayoutDashboard, FileSpreadsheet, AlertTriangle, Layers, TrendingUp, History, ShieldCheck, Terminal, Scale, Download, RefreshCw, Play, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Search, SlidersHorizontal, LayoutDashboard, FileSpreadsheet, AlertTriangle, Layers, TrendingUp, History, ShieldCheck, Terminal, Scale, Download, RefreshCw, Play, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CommandPaletteProps {
@@ -32,14 +32,15 @@ export default function CommandPalette({
   }, [isOpen]);
 
   const navItems = [
-    { label: 'Overview — Financial Control Room', path: '/', icon: LayoutDashboard, category: 'Navigation' },
+    { label: 'Control Center - Financial Controls Launchpad', path: '/', icon: SlidersHorizontal, category: 'Navigation' },
+    { label: 'Overview - Financial Control Room', path: '/overview', icon: LayoutDashboard, category: 'Navigation' },
     { label: 'Reconciliation Ledger', path: '/reconciliation', icon: FileSpreadsheet, category: 'Navigation' },
     { label: 'Exceptions & Discrepancies', path: '/exceptions', icon: AlertTriangle, category: 'Navigation' },
     { label: 'Settlements & Waterfall Batches', path: '/settlements', icon: Layers, category: 'Navigation' },
     { label: 'Cash Position & Forecast', path: '/cash-position', icon: TrendingUp, category: 'Navigation' },
     { label: 'Reconciliation Runs History', path: '/runs', icon: History, category: 'Navigation' },
     { label: 'Audit & Invariant Verification', path: '/audit', icon: ShieldCheck, category: 'Navigation' },
-    { label: 'Ask Arivo — Grounded Investigation Copilot', path: '/ask', icon: Terminal, category: 'Navigation' },
+    { label: 'Ask Arivo - Grounded Investigation Copilot', path: '/ask', icon: Terminal, category: 'Navigation' },
     { label: 'Controlled Synthetic Benchmark', path: '/benchmark', icon: Scale, category: 'Navigation' },
   ];
 
@@ -94,6 +95,22 @@ export default function CommandPalette({
     setSelectedIndex(0);
   }, [query]);
 
+  // Global capture listener for Escape key to guarantee closing from any focus state
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, [isOpen, onClose]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -113,6 +130,8 @@ export default function CommandPalette({
         }
       }
     } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   };
@@ -126,7 +145,7 @@ export default function CommandPalette({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
           />
 
           <motion.div
@@ -139,18 +158,36 @@ export default function CommandPalette({
           >
             {/* Input Header */}
             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-surface-elevated">
-              <Search className="w-5 h-5 text-content-muted" />
+              <Search className="w-5 h-5 text-content-muted shrink-0" />
               <input
                 ref={inputRef}
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onClose();
+                  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+                    handleKeyDown(e);
+                  }
+                }}
                 placeholder="Search commands, pages, or paste any Transaction / Settlement ID..."
                 className="w-full bg-transparent text-content-primary placeholder-content-muted text-sm outline-none font-sans"
               />
-              <span className="text-[11px] font-mono text-content-muted px-1.5 py-0.5 rounded border border-border bg-surface-sunken">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                title="Close (ESC)"
+                className="text-[11px] font-mono text-content-muted hover:text-content-primary px-1.5 py-0.5 rounded border border-border bg-surface-sunken hover:bg-surface-elevated transition-colors cursor-pointer shrink-0"
+              >
                 ESC
-              </span>
+              </button>
             </div>
 
             {/* List */}

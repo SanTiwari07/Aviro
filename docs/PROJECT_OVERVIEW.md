@@ -2,13 +2,13 @@
 
 ## What is Arivo?
 
-Arivo is a **deterministic reconciliation engine with AI-assisted investigation** for ambiguous financial cases. It was built for the Razorpay AI Buildathon 2026 (Track 04 — AI Finance Controller).
+Arivo is a **deterministic reconciliation engine with AI-assisted investigation** for ambiguous financial cases. It was built for the Razorpay AI Buildathon 2026 (Track 04 - AI Finance Controller).
 
 The core premise: deterministic code handles what deterministic code does best (arithmetic, exact ID matching, financial invariants). Gemini AI handles what AI does best (semantic interpretation of ambiguous evidence, human-friendly explanations). A strict **Control Gate** sits between Gemini's recommendations and any final decision to prevent unsafe automation.
 
 ## Problem Statement
 
-Finance teams reconcile payments against settlements across multiple systems (payment gateways, bank statements, ledgers, refund engines). The difficult part is not the exact matches — it is identifying:
+Finance teams reconcile payments against settlements across multiple systems (payment gateways, bank statements, ledgers, refund engines). The difficult part is not the exact matches - it is identifying:
 
 - Why did this payment not settle?
 - Is this delta an error or a legitimate fee?
@@ -59,9 +59,9 @@ A conversational interface where users ask natural-language questions about reco
 Working. Known limitations:
 - Reconciliation run is synchronous (large datasets block the HTTP request)
 - No user authentication
-- Cash Position financial impact stored in minor units (paise) — display assumes this
+- Cash Position financial impact stored in minor units (paise) - display assumes this
 - Ask Arivo context is a static string, not a live RAG over actual case data
 
 ## Tagline
 
-> Know where every rupee went — or know exactly why you don't.
+> Know where every rupee went - or know exactly why you don't.

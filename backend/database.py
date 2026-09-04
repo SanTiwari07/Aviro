@@ -90,6 +90,8 @@ class ReconciliationCase(Base):
     control_reasons = Column(String, nullable=True)  # JSON-encoded array
     financial_impact = Column(Integer, default=0)
     amount_delta = Column(Integer, default=0)
+    ml_match_score = Column(Float, nullable=True)
+    ml_rank = Column(Integer, nullable=True)
     source = Column(String, default="synthetic", index=True)
     source_record_id = Column(String, nullable=True)
     sync_id = Column(String, index=True, nullable=True)
@@ -162,6 +164,8 @@ def _ensure_sqlite_columns():
                 ("ai_reason", "TEXT"),
                 ("control_reasons", "TEXT"),
                 ("amount_delta", "INTEGER DEFAULT 0"),
+                ("ml_match_score", "REAL"),
+                ("ml_rank", "INTEGER"),
                 ("source", "TEXT DEFAULT 'synthetic'"),
                 ("source_record_id", "TEXT"),
                 ("sync_id", "TEXT"),

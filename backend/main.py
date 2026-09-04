@@ -36,7 +36,7 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("arivo")
 
 app = FastAPI(
-    title="ARIVO — AI Finance Controller",
+    title="ARIVO - AI Finance Controller",
     description="Track 04: AI Finance Controller. Preserving financial safety, deterministic controls, and measurable AI value.",
     version="2.0.0",
 )
@@ -110,6 +110,8 @@ def razorpay_status(db: Session = Depends(database.get_db)):
     return {
         "source": "razorpay_test",
         "mode": "live" if is_live_active else "synthetic",
+        "source_mode": "live" if is_live_active else "synthetic",
+        "configured": client.is_configured,
         "available": dataset_exists or db_payments_count > 0,
         "payments": db_payments_count or (5114 if dataset_exists else 0),
         "settlements": db_settlements_count or (4839 if dataset_exists else 0),
@@ -372,6 +374,9 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
                     "multiple_candidates": candidate.get("multiple_candidates"),
                     "high_value": candidate.get("high_value"),
                     "conflicting_evidence": candidate.get("conflicting_evidence"),
+                    "ml_match_score": candidate.get("ml_match_score"),
+                    "ml_rank": candidate.get("ml_rank"),
+                    "ml_score_margin": candidate.get("ml_score_margin"),
                 })
                 if ai_result.get("classification") == "AI_FAILURE":
                     ai_failures_count += 1
@@ -429,6 +434,8 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
             existing_case.control_reasons = case_data.get("control_reasons")
             existing_case.financial_impact = case_data["financial_impact"]
             existing_case.amount_delta = case_data.get("amount_delta", 0)
+            existing_case.ml_match_score = case_data.get("ml_match_score")
+            existing_case.ml_rank = case_data.get("ml_rank")
             existing_case.source = case_data["source"]
             existing_case.source_record_id = case_data.get("source_record_id")
             existing_case.sync_id = case_data.get("sync_id")
@@ -450,6 +457,8 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
                 control_reasons=case_data.get("control_reasons"),
                 financial_impact=case_data["financial_impact"],
                 amount_delta=case_data.get("amount_delta", 0),
+                ml_match_score=case_data.get("ml_match_score"),
+                ml_rank=case_data.get("ml_rank"),
                 source=case_data["source"],
                 source_record_id=case_data.get("source_record_id"),
                 sync_id=case_data.get("sync_id"),
@@ -664,6 +673,8 @@ def get_case_detail(case_id: str, db: Session = Depends(database.get_db)):
             "match_method": c.match_method,
             "financial_impact": c.financial_impact,
             "amount_delta": c.amount_delta,
+            "ml_match_score": c.ml_match_score,
+            "ml_rank": c.ml_rank,
             "source": c.source,
             "source_record_id": c.source_record_id,
             "sync_id": c.sync_id,
@@ -868,6 +879,20 @@ def get_settlement_detail(settlement_id: str, db: Session = Depends(database.get
 
     cases = db.query(database.ReconciliationCase).filter_by(settlement_id=settlement_id).all()
     return {
+        "settlement_id": s.settlement_id,
+        "merchant_id": s.merchant_id,
+        "gross_amount": s.gross_amount,
+        "fees": s.fees,
+        "tax": s.tax,
+        "refunds": s.refunds,
+        "chargebacks": s.chargebacks,
+        "adjustments": s.adjustments,
+        "net_amount": s.net_amount,
+        "currency": s.currency,
+        "status": s.status,
+        "created_at": s.created_at,
+        "utr": s.utr,
+        "unexplained_delta": s.unexplained_delta,
         "settlement": s,
         "cases": cases,
     }

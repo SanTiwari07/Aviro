@@ -2,7 +2,7 @@
 
 ### AI Finance Controller
 
-> Know where every rupee went — or know exactly why you don't.
+> Know where every rupee went - or know exactly why you don't.
 
 ## Problem
 Finance teams need to reconcile financial records across payment, settlement, ledger, refund, chargeback, and bank systems. The hard part is knowing what actually reconciled, what did not, why it did not, and whether an automated decision is safe.

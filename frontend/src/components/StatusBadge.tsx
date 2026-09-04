@@ -101,7 +101,7 @@ export default function StatusBadge({
 
   return (
     <span
-      className={`inline-flex items-center font-mono font-bold uppercase rounded border transition-colors select-none ${sizeStyles} ${colorStyles} ${className}`}
+      className={`inline-flex items-center font-mono font-bold uppercase rounded border transition-colors select-none cursor-default ${sizeStyles} ${colorStyles} ${className}`}
     >
       {showDot && (
         <span

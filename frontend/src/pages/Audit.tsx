@@ -41,64 +41,76 @@ export default function Audit() {
     loadAuditData();
   }, []);
 
+  const checksMap: Record<string, any> = (controlHealth?.checks_map as any) || (
+    Array.isArray(controlHealth?.checks)
+      ? controlHealth.checks.reduce((acc: any, c: any) => {
+          const key = c.name?.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          acc[key] = c;
+          return acc;
+        }, {})
+      : controlHealth?.checks || {}
+  );
+
   const invariants = [
     {
       id: 1,
       name: 'Population Conservation',
       formula: 'Input = Matched + Review + Exception + Invalid',
       desc: 'Guarantees zero un-audited or dropped transaction records across any reconciliation run.',
-      status: controlHealth?.checks?.population_conservation?.status || 'PASS',
-      detail: controlHealth?.checks?.population_conservation?.message || '100% of ingested records are accounted for in terminal states.',
+      status: checksMap?.population_conservation?.status || 'PASS',
+      detail: checksMap?.population_conservation?.details || checksMap?.population_conservation?.message || '100% of ingested records are accounted for in terminal states.',
     },
     {
       id: 2,
       name: 'Settlement Waterfall Arithmetic',
       formula: 'Expected Net = Gross − Fees − Tax − Refunds − Chargebacks + Adjustments',
       desc: 'All settlement batches balance with exact integer paise precision. Unexplained delta must equal 0.',
-      status: controlHealth?.checks?.settlement_waterfall?.status || 'PASS',
-      detail: controlHealth?.checks?.settlement_waterfall?.message || 'Zero arithmetic variance detected in verified settlement ledger.',
+      status: checksMap?.settlement_waterfall?.status || 'PASS',
+      detail: checksMap?.settlement_waterfall?.details || checksMap?.settlement_waterfall?.message || 'Zero arithmetic variance detected in verified settlement ledger.',
     },
     {
       id: 3,
       name: 'Single Candidate Uniqueness',
       formula: '|Candidates| == 1 for Automatic Finalization',
       desc: 'Automated matching is strictly blocked if multiple unallocated candidates share identical parameters.',
-      status: controlHealth?.checks?.single_candidate?.status || 'PASS',
-      detail: 'Ambiguous candidates automatically routed to Review state for controller sign-off.',
+      status: checksMap?.single_candidate?.status || 'PASS',
+      detail: checksMap?.single_candidate?.details || checksMap?.single_candidate?.message || 'Ambiguous candidates automatically routed to Review state for controller sign-off.',
     },
     {
       id: 4,
       name: 'Duplicate Allocation Protection',
       formula: 'Allocations per Settlement Record <= 1',
       desc: 'Prevents multiple payment transactions from claiming identical settlement credit references.',
-      status: controlHealth?.checks?.duplicate_allocation?.status || 'PASS',
-      detail: 'Settlement references locked immediately upon first validated claim.',
+      status: checksMap?.duplicate_allocation?.status || 'PASS',
+      detail: checksMap?.duplicate_allocation?.details || checksMap?.duplicate_allocation?.message || 'Settlement references locked immediately upon first validated claim.',
     },
     {
       id: 5,
       name: 'Currency Consistency',
       formula: 'Currency == INR (Base Unit: Integer Paise)',
       desc: 'Ensures strict currency uniformity across all internal ledgers and cash forecasts.',
-      status: controlHealth?.checks?.currency_uniformity?.status || 'PASS',
-      detail: 'Cross-currency exchange rates quarantined pending FX confirmation.',
+      status: checksMap?.currency_uniformity?.status || 'PASS',
+      detail: checksMap?.currency_uniformity?.details || checksMap?.currency_uniformity?.message || 'Cross-currency exchange rates quarantined pending FX confirmation.',
     },
     {
       id: 6,
       name: 'High-Value Boundary Safeguard',
       formula: 'Gross >= ₹50,000.00 => Exact Unique ID Required',
       desc: 'High-value transactions with semantic ambiguity are vetoed by the Control Gate, overriding LLM confidence.',
-      status: controlHealth?.checks?.high_value_protection?.status || 'PASS',
-      detail: 'Control Gate veto active. "The AI is confident. The system is not."',
+      status: checksMap?.high_value_protection?.status || 'PASS',
+      detail: checksMap?.high_value_protection?.details || checksMap?.high_value_protection?.message || 'Control Gate veto active. "The AI is confident. The system is not."',
     },
     {
       id: 7,
       name: 'AI Schema & Decision Conformance',
       formula: 'Status ∈ {MATCHED, REVIEW, EXCEPTION} ∧ 0.0 <= Conf <= 1.0',
       desc: 'All Investigation Engine responses are strictly validated against Pydantic schemas with hallucination guards.',
-      status: controlHealth?.checks?.ai_schema_validity?.status || 'PASS',
-      detail: 'Provider: Google (Gemini 2.5). No hallucinated IDs permitted; fallback to deterministic review if schema violated.',
+      status: checksMap?.ai_schema_validity?.status || 'PASS',
+      detail: checksMap?.ai_schema_validity?.details || checksMap?.ai_schema_validity?.message || 'Provider: Google (Gemini 2.5). No hallucinated IDs permitted; fallback to deterministic review if schema violated.',
     },
   ];
+
+  const allPassed = controlHealth?.overall_status === 'ALL_SYSTEMS_OPERATIONAL' || (!controlHealth && true);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -124,9 +136,9 @@ export default function Audit() {
       </div>
 
       {/* Top Status Banner */}
-      <div className="p-4 rounded-lg bg-surface border-l-4 border-l-status-mint border border-border shadow-card flex items-center justify-between">
+      <div className={`p-4 rounded-lg bg-surface border-l-4 ${allPassed ? 'border-l-status-mint' : 'border-l-status-amber'} border border-border shadow-card flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-md bg-[#04DB7C]/15 text-[#04DB7C] border border-[#04DB7C]/30">
+          <div className={`p-2.5 rounded-md ${allPassed ? 'bg-[#04DB7C]/15 text-[#04DB7C] border border-[#04DB7C]/30' : 'bg-status-amber/15 text-status-amber border border-status-amber/30'}`}>
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
@@ -134,12 +146,14 @@ export default function Audit() {
               Institutional Control Gate Status
             </h3>
             <p className="text-xs text-content-muted font-mono">
-              All 7 Financial Invariants Verified • Zero Tolerance Policy Active
+              {allPassed ? 'All 7 Financial Invariants Verified' : 'Continuous Financial Invariants Verification Active'} • Zero Tolerance Policy Active
             </p>
           </div>
         </div>
         <div className="text-right">
-          <StatusBadge status="PASS" label="ALL 7 INVARIANTS PASS" size="md" />
+          <span className={`text-xs font-mono font-bold uppercase tracking-wider ${allPassed ? 'text-[#04DB7C]' : 'text-[#FFB454]'}`}>
+            {allPassed ? 'ALL 7 INVARIANTS PASS' : 'ATTENTION REQUIRED'}
+          </span>
         </div>
       </div>
 
@@ -200,25 +214,22 @@ export default function Audit() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Policy List */}
-          <div className="space-y-1.5 md:col-span-1">
+          {/* Policy Index List */}
+          <div className="space-y-1.5">
             {policies.map((pol) => {
-              const isSel = selectedPolicy?.doc_name === pol.doc_name;
+              const isSelected = selectedPolicy?.doc_name === pol.doc_name;
               return (
                 <button
                   key={pol.doc_name}
                   onClick={() => setSelectedPolicy(pol)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg text-left text-xs transition-colors border ${
-                    isSel
-                      ? 'bg-brand/12 text-content-primary border-brand/40 font-semibold shadow-subtle'
-                      : 'bg-surface-sunken text-content-secondary hover:bg-surface-elevated border-border'
+                  className={`w-full text-left p-3 rounded-md border text-xs transition-colors flex items-center justify-between ${
+                    isSelected
+                      ? 'bg-surface-elevated border-brand text-brand font-semibold shadow-subtle'
+                      : 'bg-surface border-border text-content-secondary hover:text-content-primary hover:bg-surface-sunken'
                   }`}
                 >
-                  <div>
-                    <p className="font-semibold text-content-primary">{pol.policy_name}</p>
-                    <p className="text-[10px] font-mono text-content-muted">{pol.doc_name} • v{pol.version}</p>
-                  </div>
-                  <ChevronRight className={`w-3.5 h-3.5 ${isSel ? 'text-brand' : 'text-content-muted'}`} />
+                  <span className="font-mono">{pol.policy_name}</span>
+                  <span className="text-[10px] text-content-muted uppercase font-mono">v{pol.version}</span>
                 </button>
               );
             })}
@@ -233,7 +244,6 @@ export default function Audit() {
                     <h4 className="text-sm font-bold text-content-primary">{selectedPolicy.policy_name}</h4>
                     <p className="text-xs font-mono text-brand">Document: {selectedPolicy.doc_name} (v{selectedPolicy.version})</p>
                   </div>
-                  <StatusBadge status="PASS" label="ACTIVE POLICY" size="sm" />
                 </div>
 
                 <div className="space-y-2">

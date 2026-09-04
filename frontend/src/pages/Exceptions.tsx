@@ -171,15 +171,19 @@ export default function Exceptions({
                         <div className="flex items-center gap-2">
                           <span>{c.case_id}</span>
                           {isHighVal && (
-                            <StatusBadge status="HIGH_VALUE" label="HIGH VALUE" size="sm" showDot={false} />
+                            <span className="text-[10px] font-mono text-[#FF647C] font-bold">
+                              HIGH VALUE
+                            </span>
                           )}
                           {isFlagship && (
-                            <StatusBadge status="FLAGSHIP" label="FLAGSHIP" size="sm" showDot={false} />
+                            <span className="text-[10px] font-mono text-[#8B7CFF] font-bold">
+                              FLAGSHIP
+                            </span>
                           )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-content-secondary">
-                        {c.payment_id || '—'}
+                        {c.payment_id || '-'}
                       </td>
                       <td className="py-3 px-4 text-content-muted">
                         {c.match_method ||

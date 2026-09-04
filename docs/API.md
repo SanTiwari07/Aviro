@@ -23,7 +23,7 @@ Request bodies are JSON-encoded.
 
 ## Response Format
 
-All successful responses return JSON. There is no envelope wrapper — the response body is the direct payload.
+All successful responses return JSON. There is no envelope wrapper - the response body is the direct payload.
 
 Example success:
 ```json

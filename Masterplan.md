@@ -1,6 +1,6 @@
 You are the principal engineer, product engineer, AI engineer, data engineer,
 and QA lead responsible for completing ARIVO for the Razorpay AI Buildathon 2026,
-Track 04 — AI Finance Controller.
+Track 04 - AI Finance Controller.
 
 You are working inside an existing development workspace.
 
@@ -74,7 +74,7 @@ AI Finance Controller
 
 Primary positioning:
 
-"Know where every rupee went — or know exactly why you don't."
+"Know where every rupee went - or know exactly why you don't."
 
 Core problem:
 
@@ -925,13 +925,13 @@ Date range:
 
 Dataset tiers:
 
-100 records — smoke
+100 records - smoke
 
-500 records — demo
+500 records - demo
 
-5,000 records — benchmark
+5,000 records - benchmark
 
-50,000 records — optional stress
+50,000 records - optional stress
 
 Default seed:
 
@@ -2615,7 +2615,7 @@ Start with:
 
 ### AI Finance Controller
 
-> Know where every rupee went — or know exactly why you don't.
+> Know where every rupee went - or know exactly why you don't.
 
 Then explain:
 
@@ -3052,35 +3052,35 @@ DEMO_SCRIPT.md
 
 Structure:
 
-0:00 — Problem
+0:00 - Problem
 
-0:30 — Arivo overview
+0:30 - Arivo overview
 
-1:00 — Clean match
+1:00 - Clean match
 
-1:20 — Fuzzy reference
+1:20 - Fuzzy reference
 
-1:40 — Grouped settlement
+1:40 - Grouped settlement
 
-2:10 — Refund waterfall
+2:10 - Refund waterfall
 
-2:40 — Real exception
+2:40 - Real exception
 
-3:10 — Gemini investigation
+3:10 - Gemini investigation
 
-3:40 — High-value ambiguous case
+3:40 - High-value ambiguous case
 
-4:00 — Gemini 97% recommendation
+4:00 - Gemini 97% recommendation
 
-4:10 — Control Gate BLOCK
+4:10 - Control Gate BLOCK
 
-4:20 — Final REVIEW
+4:20 - Final REVIEW
 
-4:30 — Ask Arivo
+4:30 - Ask Arivo
 
-4:50 — Benchmark
+4:50 - Benchmark
 
-5:00 — Closing statement
+5:00 - Closing statement
 
 Closing:
 
@@ -3481,7 +3481,7 @@ ARIVO
 
 AI Finance Controller
 
-"Know where every rupee went —
+"Know where every rupee went -
 or know exactly why you don't."
 
 AI investigates.
@@ -3560,11 +3560,11 @@ DO NOT BUILD THE MOST SOFTWARE.
 
 BUILD THE MOST CREDIBLE FINANCE CONTROLLER.
 
-# ARIVO — FINAL IMPLEMENTATION & UPGRADE PROMPT
+# ARIVO - FINAL IMPLEMENTATION & UPGRADE PROMPT
 
 ## Role
 
-You are the principal engineer, backend engineer, frontend engineer, AI engineer, data engineer, QA engineer, and product engineer responsible for completing **ARIVO**, an AI Finance Controller built for the **Razorpay AI Buildathon 2026 — Track 04**.
+You are the principal engineer, backend engineer, frontend engineer, AI engineer, data engineer, QA engineer, and product engineer responsible for completing **ARIVO**, an AI Finance Controller built for the **Razorpay AI Buildathon 2026 - Track 04**.
 
 You are working inside an existing implementation.
 
@@ -3599,7 +3599,7 @@ Category:
 
 Primary positioning:
 
-> **Know where every rupee went — or know exactly why you don't.**
+> **Know where every rupee went - or know exactly why you don't.**
 
 Core philosophy:
 
@@ -3706,7 +3706,7 @@ This architecture must remain the central design.
 
 ---
 
-# 3. FIRST STEP — INSPECT BEFORE MODIFYING
+# 3. FIRST STEP - INSPECT BEFORE MODIFYING
 
 Before writing or changing code:
 
@@ -3750,7 +3750,7 @@ Then implement.
 
 ---
 
-# 4. CURRENT SYSTEM — PRESERVE THESE STRENGTHS
+# 4. CURRENT SYSTEM - PRESERVE THESE STRENGTHS
 
 The existing system already has several important architectural strengths.
 
@@ -3815,7 +3815,7 @@ The system must preserve this invariant.
 
 ---
 
-# 5. PRIMARY UPGRADE — RAZORPAY TEST-MODE DATA
+# 5. PRIMARY UPGRADE - RAZORPAY TEST-MODE DATA
 
 Real Razorpay API access is now available.
 
@@ -5083,7 +5083,7 @@ A financial controller must never silently duplicate money.
 
 ---
 
-# 38. WEBHOOKS — OPTIONAL, NOT FIRST PRIORITY
+# 38. WEBHOOKS - OPTIONAL, NOT FIRST PRIORITY
 
 If sufficient time remains after the core Razorpay API integration is stable, consider:
 
@@ -5954,7 +5954,7 @@ Every additional external API creates another failure surface.
 
 Follow this order.
 
-## Phase 1 — Inspection
+## Phase 1 - Inspection
 
 Inspect existing code and documentation.
 
@@ -5962,7 +5962,7 @@ Do not modify yet.
 
 ---
 
-## Phase 2 — Razorpay foundation
+## Phase 2 - Razorpay foundation
 
 Implement:
 
@@ -5978,7 +5978,7 @@ Errors
 
 ---
 
-## Phase 3 — Normalization
+## Phase 3 - Normalization
 
 Implement:
 
@@ -5992,7 +5992,7 @@ Test thoroughly.
 
 ---
 
-## Phase 4 — Sync/Snapshot
+## Phase 4 - Sync/Snapshot
 
 Implement:
 
@@ -6010,7 +6010,7 @@ Add provenance.
 
 ---
 
-## Phase 5 — Existing engine integration
+## Phase 5 - Existing engine integration
 
 Connect normalized Razorpay data to the existing reconciliation engine.
 
@@ -6018,7 +6018,7 @@ Do NOT rewrite the engine unless inspection proves a real incompatibility.
 
 ---
 
-## Phase 6 — Reliability
+## Phase 6 - Reliability
 
 Implement:
 
@@ -6033,7 +6033,7 @@ clear UI errors
 
 ---
 
-## Phase 7 — UI source selection
+## Phase 7 - UI source selection
 
 Add:
 
@@ -6050,7 +6050,7 @@ Sync Razorpay
 
 ---
 
-## Phase 8 — Evidence provenance
+## Phase 8 - Evidence provenance
 
 Show:
 
@@ -6065,13 +6065,13 @@ in Evidence Drawer.
 
 ---
 
-## Phase 9 — Unresolved exposure
+## Phase 9 - Unresolved exposure
 
 Add the financial exposure KPI.
 
 ---
 
-## Phase 10 — Ask Arivo grounding
+## Phase 10 - Ask Arivo grounding
 
 Connect Ask Arivo to real backend records.
 
@@ -6091,37 +6091,37 @@ into Evidence Drawer.
 
 ---
 
-## Phase 11 — Runs
+## Phase 11 - Runs
 
 Add run history and source/sync provenance.
 
 ---
 
-## Phase 12 — Cash forecast
+## Phase 12 - Cash forecast
 
 Implement deterministic 7-day forecast.
 
 ---
 
-## Phase 13 — Benchmark / AI contribution
+## Phase 13 - Benchmark / AI contribution
 
 Improve benchmark visibility and AI lift measurement.
 
 ---
 
-## Phase 14 — Confidence calibration
+## Phase 14 - Confidence calibration
 
 Only if benchmark data supports it.
 
 ---
 
-## Phase 15 — CSV export
+## Phase 15 - CSV export
 
 Add exception export.
 
 ---
 
-## Phase 16 — Webhooks
+## Phase 16 - Webhooks
 
 Only if all previous phases are stable and there is meaningful time remaining.
 
@@ -6163,7 +6163,7 @@ The live integration is an enhancement, not a single point of demo failure.
 
 The final application should support this sequence naturally.
 
-## 0:00 — Problem
+## 0:00 - Problem
 
 Explain:
 
@@ -6171,7 +6171,7 @@ Explain:
 
 ---
 
-## 0:30 — Razorpay connection
+## 0:30 - Razorpay connection
 
 Show:
 
@@ -6194,7 +6194,7 @@ Sync Razorpay
 
 ---
 
-## 1:00 — Reconciliation
+## 1:00 - Reconciliation
 
 Show:
 
@@ -6207,7 +6207,7 @@ Show:
 
 ---
 
-## 1:30 — Clean case
+## 1:30 - Clean case
 
 Open a normal match.
 
@@ -6224,7 +6224,7 @@ MATCHED
 
 ---
 
-## 2:00 — Financial exception
+## 2:00 - Financial exception
 
 Open a settlement with an unexplained delta.
 
@@ -6249,7 +6249,7 @@ EXCEPTION
 
 ---
 
-## 2:30 — AI safety flagship
+## 2:30 - AI safety flagship
 
 Show:
 
@@ -6278,7 +6278,7 @@ Say:
 
 ---
 
-## 3:15 — Ask Arivo
+## 3:15 - Ask Arivo
 
 Ask:
 
@@ -6304,7 +6304,7 @@ Evidence Drawer opens.
 
 ---
 
-## 4:00 — Cash forecast
+## 4:00 - Cash forecast
 
 Show:
 
@@ -6317,7 +6317,7 @@ Unresolved exposure
 
 ---
 
-## 4:30 — Benchmark
+## 4:30 - Benchmark
 
 Show:
 
@@ -6339,11 +6339,11 @@ AI contribution
 
 ---
 
-## 4:55 — Closing
+## 4:55 - Closing
 
 Use:
 
-> **Arivo doesn't automate uncertainty away. It makes uncertainty visible — and protects the money when AI isn't certain enough.**
+> **Arivo doesn't automate uncertainty away. It makes uncertainty visible - and protects the money when AI isn't certain enough.**
 
 ---
 

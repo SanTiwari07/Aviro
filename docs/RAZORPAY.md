@@ -1,4 +1,4 @@
-# Razorpay Integration Guide — ARIVO Finance Controller
+# Razorpay Integration Guide - ARIVO Finance Controller
 
 ## 1. Overview & Architecture
 

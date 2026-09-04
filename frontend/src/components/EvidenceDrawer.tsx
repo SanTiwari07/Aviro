@@ -39,6 +39,7 @@ export default function EvidenceDrawer({
   const [resolving, setResolving] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [showNotesModal, setShowNotesModal] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!caseId) {
@@ -79,6 +80,7 @@ export default function EvidenceDrawer({
   const handleResolveAction = async (action: 'APPROVED' | 'REJECTED' | 'ESCALATED') => {
     if (!caseId) return;
     setResolving(true);
+    setResolveError(null);
     try {
       await api.resolveCase(caseId, action, notesInput, 'Controller (SecOps)');
       setShowNotesModal(null);
@@ -88,7 +90,7 @@ export default function EvidenceDrawer({
       setData(updated);
       onCaseUpdated?.();
     } catch (err: any) {
-      alert(`Resolution failed: ${err.message}`);
+      setResolveError(`Resolution failed: ${err.message || 'Unknown error'}`);
     } finally {
       setResolving(false);
     }
@@ -177,7 +179,9 @@ export default function EvidenceDrawer({
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <StatusBadge status="FLAGSHIP" label="CONTROL GATE SAFEGUARD" size="sm" />
+                          <span className="text-xs font-mono font-bold tracking-wider text-[#7462F5] dark:text-[#A79CFF] uppercase">
+                            CONTROL GATE SAFEGUARD
+                          </span>
                         </div>
                         <span className="text-[11px] font-mono text-content-muted font-semibold">
                           Invariant 6: High-Value Protection
@@ -226,7 +230,7 @@ export default function EvidenceDrawer({
                           Payment Ledger
                         </span>
                         <span className="text-xs font-mono text-brand font-bold">
-                          {payment?.payment_id || c?.payment_id || '—'}
+                          {payment?.payment_id || c?.payment_id || '-'}
                         </span>
                       </div>
 
@@ -243,7 +247,7 @@ export default function EvidenceDrawer({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-content-muted">Order ID:</span>
-                          <span className="font-mono text-content-secondary">{payment?.order_id || '—'}</span>
+                          <span className="font-mono text-content-secondary">{payment?.order_id || '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-content-muted">Captured At:</span>
@@ -514,6 +518,12 @@ export default function EvidenceDrawer({
                 <p className="text-xs text-content-muted">
                   This action is recorded in the permanent institutional audit log with your controller credentials.
                 </p>
+
+                {resolveError && (
+                  <div className="p-2 rounded bg-[#FF647C]/15 border border-[#FF647C]/30 text-xs text-[#E03A53] dark:text-[#FF647C] font-mono">
+                    {resolveError}
+                  </div>
+                )}
 
                 <textarea
                   value={notesInput}

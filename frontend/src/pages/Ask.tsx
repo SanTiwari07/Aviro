@@ -131,9 +131,8 @@ export default function Ask({ onOpenCase }: AskProps) {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-content-primary tracking-tight">
-                Ask Arivo — Grounded Investigation Copilot
+                Ask Arivo - Grounded Investigation Copilot
               </h2>
-              <StatusBadge status="INVESTIGATION COPILOT" label="INVESTIGATION COPILOT" size="sm" />
             </div>
             <p className="text-xs text-content-muted font-mono mt-0.5">
               Strictly grounded on verified SQLite records + RAG Policy Knowledge Base. No raw hallucinations.
@@ -221,7 +220,7 @@ export default function Ask({ onOpenCase }: AskProps) {
                             <div>
                               <span className="text-brand font-bold group-hover:underline">{recId}</span>
                               <div className="text-[11px] text-content-muted">
-                                {r.amount_formatted || r.gross_formatted || r.impact_formatted || '—'} • {r.status || r.control_result || ''}
+                                {r.amount_formatted || r.gross_formatted || r.impact_formatted || '-'} • {r.status || r.control_result || ''}
                               </div>
                             </div>
                             <ArrowRight className="w-3.5 h-3.5 text-content-muted group-hover:text-brand" />

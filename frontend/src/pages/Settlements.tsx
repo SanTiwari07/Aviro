@@ -18,12 +18,15 @@ import StatusBadge from '../components/StatusBadge';
 
 interface SettlementsProps {
   currentSource: string;
+  onOpenCase?: (caseId: string) => void;
 }
 
-export default function Settlements({ currentSource }: SettlementsProps) {
+export default function Settlements({ currentSource, onOpenCase }: SettlementsProps) {
   const [settlements, setSettlements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
+  const [settlementDetail, setSettlementDetail] = useState<{ settlement?: any; cases?: any[] } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const loadSettlements = () => {
     setLoading(true);
@@ -39,6 +42,18 @@ export default function Settlements({ currentSource }: SettlementsProps) {
   useEffect(() => {
     loadSettlements();
   }, [currentSource]);
+
+  useEffect(() => {
+    if (!selectedSettlement) {
+      setSettlementDetail(null);
+      return;
+    }
+    setDetailLoading(true);
+    api.getSettlementDetail(selectedSettlement.settlement_id)
+      .then((detail) => setSettlementDetail(detail))
+      .catch((err) => console.error('Failed to load settlement detail:', err))
+      .finally(() => setDetailLoading(false));
+  }, [selectedSettlement?.settlement_id]);
 
   const totalGross = settlements.reduce((acc, s) => acc + (s.gross_amount || 0), 0);
   const totalNet = settlements.reduce((acc, s) => acc + (s.net_amount || 0), 0);
@@ -209,7 +224,7 @@ export default function Settlements({ currentSource }: SettlementsProps) {
               initial={{ opacity: 0, scale: 0.96, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 10 }}
-              className="relative w-full max-w-lg bg-surface border border-border rounded-xl shadow-elevated p-6 z-10 space-y-4"
+              className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-surface border border-border rounded-xl shadow-elevated p-6 z-10 space-y-4"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-border">
@@ -303,7 +318,7 @@ export default function Settlements({ currentSource }: SettlementsProps) {
                   ) : (
                     <div className="p-2.5 rounded-lg bg-[#04DB7C]/10 border border-[#04DB7C]/25 flex items-center justify-between text-[#04DB7C] font-semibold text-xs">
                       <span>Unexplained Delta: ₹0.00</span>
-                      <StatusBadge status="PASS" label="WATERFALL PASS" size="sm" />
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#04DB7C]">WATERFALL PASS</span>
                     </div>
                   )}
                 </div>
@@ -312,6 +327,54 @@ export default function Settlements({ currentSource }: SettlementsProps) {
                 <div className="pt-2 text-[11px] text-content-muted space-y-1 border-t border-border/60">
                   <p>Bank Reference (UTR): <span className="text-content-secondary font-bold">{selectedSettlement.utr || 'Pending NEFT clearance'}</span></p>
                   <p>Settlement Date: <span className="text-content-secondary">{formatDate(selectedSettlement.created_at)}</span></p>
+                </div>
+
+                {/* Associated Reconciliation Cases */}
+                <div className="pt-3 border-t border-border/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-content-muted font-semibold">
+                      Associated Reconciliation Cases ({settlementDetail?.cases?.length || 0})
+                    </span>
+                    {detailLoading && (
+                      <span className="text-[10px] font-mono text-brand animate-pulse">Loading cases...</span>
+                    )}
+                  </div>
+
+                  {settlementDetail?.cases && settlementDetail.cases.length > 0 ? (
+                    <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                      {settlementDetail.cases.map((c: any) => (
+                        <div
+                          key={c.case_id}
+                          className="flex items-center justify-between p-2 rounded bg-surface border border-border hover:bg-surface-elevated transition-colors text-xs font-mono"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="font-bold text-content-primary">{c.case_id}</span>
+                            <span className="text-content-muted text-[10px] truncate">({c.payment_id || 'No payment'})</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <StatusBadge status={c.status} size="sm" />
+                            {onOpenCase && (
+                              <button
+                                onClick={() => {
+                                  setSelectedSettlement(null);
+                                  onOpenCase(c.case_id);
+                                }}
+                                className="px-2 py-0.5 rounded text-[10px] bg-brand/10 hover:bg-brand/20 text-brand font-semibold transition-colors"
+                              >
+                                View Evidence
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !detailLoading && (
+                      <p className="text-[11px] font-mono text-content-muted italic">
+                        No direct payment cases mapped to this settlement batch.
+                      </p>
+                    )
+                  )}
                 </div>
               </div>
             </motion.div>

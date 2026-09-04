@@ -9,7 +9,7 @@
 ---
 
 ## 1. Core Operating Doctrine
-> **"Know where every rupee went — or know exactly why you don't."**  
+> **"Know where every rupee went - or know exactly why you don't."**  
 > *AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity.*
 
 ### The Separation Principle

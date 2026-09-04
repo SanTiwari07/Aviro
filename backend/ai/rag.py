@@ -1,5 +1,5 @@
 """
-Real RAG engine for ARIVO — AI Finance Controller.
+Real RAG engine for ARIVO - AI Finance Controller.
 Combines:
 1. Controlled Intent Classification & Parametric Database Queries (Zero Arbitrary SQL)
 2. In-Memory Lexical & Token Policy Retrieval across knowledge/*.md
@@ -403,7 +403,7 @@ RETRIEVED POLICY PROVISIONS:
             rid = r.get("id")
             val = r.get("amount_formatted") or r.get("gross_formatted") or r.get("impact_formatted") or ""
             st = r.get("status") or r.get("control_result") or ""
-            answer_parts.append(f"• **{rtype} `{rid}`**: {val} — Status: `{st}`")
+            answer_parts.append(f"• **{rtype} `{rid}`**: {val} - Status: `{st}`")
         answer_parts.append(f"\n{context_summary}")
     else:
         answer_parts.append(context_summary)

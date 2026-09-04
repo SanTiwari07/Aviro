@@ -1,8 +1,8 @@
-# ARIVO — System Architecture
+# ARIVO - System Architecture
 
 ## 1. Core Philosophy
 
-> **"Know where every rupee went — or know exactly why you don't."**
+> **"Know where every rupee went - or know exactly why you don't."**
 > 
 > *AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity.*
 

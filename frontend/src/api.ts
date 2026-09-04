@@ -122,10 +122,10 @@ export const api = {
   getRazorpayStatus: () => apiFetch('/api/razorpay/status'),
   syncRazorpay: () => apiFetch('/api/razorpay/sync', { method: 'POST' }),
   getLatestSync: () => apiFetch('/api/sync/latest'),
-  runReconciliation: (source = 'synthetic', syncId?: string) =>
+  runReconciliation: (source = 'synthetic', syncId?: string, customData?: { payments?: any[]; settlements?: any[] }) =>
     apiFetch('/api/reconciliation/run', {
       method: 'POST',
-      body: JSON.stringify({ source, sync_id: syncId }),
+      body: JSON.stringify({ source, sync_id: syncId, ...customData }),
     }),
   getDashboard: (source?: string) =>
     apiFetch(`/api/dashboard${source && source !== 'all' ? `?source=${source}` : ''}`),
@@ -189,7 +189,7 @@ export function formatINR(paise: number | undefined | null): string {
  * Formats ISO timestamp to institutional date/time representation.
  */
 export function formatDate(isoStr: string | undefined | null): string {
-  if (!isoStr) return '—';
+  if (!isoStr) return '-';
   try {
     const d = new Date(isoStr);
     if (isNaN(d.getTime())) return isoStr;

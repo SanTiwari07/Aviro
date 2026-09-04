@@ -1,7 +1,7 @@
-# ARIVO — AI Finance Controller
-### Razorpay AI Buildathon 2026 — Track 04
+# ARIVO - AI Finance Controller
+### Razorpay AI Buildathon 2026 - Track 04
 
-> **"Know where every rupee went — or know exactly why you don't."**
+> **"Know where every rupee went - or know exactly why you don't."**
 > 
 > *AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity.*
 

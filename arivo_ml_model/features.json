@@ -2,13 +2,17 @@
   "features": [
     "amount_delta",
     "amount_ratio",
+    "amount_exact_match",
     "date_delta_days",
+    "date_within_window",
     "merchant_match",
     "currency_match",
     "reference_similarity",
+    "reference_exact_match",
     "candidate_count"
   ],
   "model": "XGBoostClassifier",
-  "task": "payment_settlement_candidate_scoring",
-  "score_note": "Model score is a ranking signal. Do not describe it as calibrated probability without calibration."
+  "task": "candidate_ranking",
+  "target": "is_true_relationship",
+  "updated_at": "2026-09-04T19:30:31.074661"
 }

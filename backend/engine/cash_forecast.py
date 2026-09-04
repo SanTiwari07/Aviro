@@ -125,11 +125,26 @@ def calculate_cash_forecast(db: Session) -> Dict[str, Any]:
         for item in daily_breakdown
     ]
 
+    projections = [
+        {
+            "day_index": item["day_index"],
+            "day_name": item["label"],
+            "date": item["date"],
+            "expected_amount": item["amount"],
+            "amount": item["amount"],
+            "confidence": item["confidence"],
+            "type": item["type"],
+        }
+        for item in daily_breakdown
+    ]
+
     return {
         "confirmed_cash": matched_sum,
         "expected_settlements": pending_settlements_sum,
         "unresolved_exposure": unresolved_exposure,
+        "unresolved_risk_buffer": unresolved_exposure,
         "seven_day_expected_inflow": inflow_sum,
+        "projections": projections,
         "timeline": daily_breakdown,
         "days": days,
         "summary": {

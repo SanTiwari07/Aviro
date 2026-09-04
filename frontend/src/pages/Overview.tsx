@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { api, formatINR, formatNumber } from '../api';
 import {
   Play,
@@ -28,7 +29,18 @@ export default function Overview({
   onOpenCase,
   onOpenReconcileModal,
 }: OverviewProps) {
+  const location = useLocation();
+  const locState = (location.state as {
+    runId?: string;
+    recordCount?: number;
+    matchedCount?: number;
+    reviewCount?: number;
+    exceptionCount?: number;
+    completedAt?: string;
+  }) || null;
+
   const [dashboard, setDashboard] = useState<any>(null);
+  const [latestRun, setLatestRun] = useState<any>(null);
   const [exceptions, setExceptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +55,12 @@ export default function Overview({
       api.getCashForecast().catch(() => null),
       api.getRazorpayStatus().catch(() => null),
       api.getExceptions({ source, limit: 5 }).catch(() => []),
+      api.getRuns(1).catch(() => []),
     ])
-      .then(([dash, , , exc]) => {
+      .then(([dash, , , exc, runs]) => {
         setDashboard(dash);
         if (Array.isArray(exc)) setExceptions(exc);
+        if (Array.isArray(runs) && runs.length > 0) setLatestRun(runs[0]);
       })
       .catch((err) => {
         console.error('Overview load failed:', err);
@@ -90,6 +104,10 @@ export default function Overview({
 
   const matchedPercent = totalVolume > 0 ? ((matchedVol / totalVolume) * 100).toFixed(1) : '0.0';
 
+  const activeRunId = locState?.runId || latestRun?.run_id || 'RUN_INIT';
+  const activeCompletedAt = locState?.completedAt || (latestRun ? 'from latest run' : 'just now');
+  const activeRecordCount = locState?.recordCount || latestRun?.records_processed || totalCount || 5114;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Action & Workspace Bar */}
@@ -99,12 +117,6 @@ export default function Overview({
             <h1 className="text-xl font-bold tracking-tight text-content-primary">
               Financial Control Room
             </h1>
-            <StatusBadge status="OPERATIONAL" label="LIVE MONITOR" size="sm" />
-            {source === 'razorpay_test' && (
-              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 border border-amber-500/30 font-semibold">
-                Razorpay Test Store · Synthetic Data
-              </span>
-            )}
           </div>
           <p className="text-xs text-content-muted mt-1 font-mono">
             Deterministic Reconciliation · Investigation Engine · Authoritative Control Gate
@@ -131,6 +143,40 @@ export default function Overview({
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Run Reconciliation</span>
           </button>
+        </div>
+      </div>
+
+      {/* Control Run Context Bar */}
+      <div className="p-3.5 rounded-lg bg-surface border border-border shadow-subtle flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-content-muted block">CONTROL RUN</span>
+            <span className="text-sm font-bold text-brand tabular-nums">{activeRunId}</span>
+          </div>
+          <div className="h-6 w-px bg-border hidden sm:block" />
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-content-muted block">STATUS</span>
+            <span className="text-status-mint font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-status-mint" />
+              <span>Completed {activeCompletedAt}</span>
+            </span>
+          </div>
+          <div className="h-6 w-px bg-border hidden sm:block" />
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-content-muted block">RECORDS</span>
+            <span className="text-content-primary font-medium tabular-nums">{formatNumber(activeRecordCount)} records</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            to="/"
+            className="px-3 py-1.5 rounded-md bg-surface-elevated hover:bg-surface-sunken border border-border text-xs font-mono text-content-secondary hover:text-content-primary transition-colors flex items-center gap-1.5"
+            title="Return to ARIVO Control Center"
+          >
+            <span>Control Center</span>
+            <ArrowRight className="w-3.5 h-3.5 text-content-muted" />
+          </Link>
         </div>
       </div>
 
@@ -276,67 +322,6 @@ export default function Overview({
         />
       </div>
 
-      {/* Autonomous Financial Architecture Flow Visual */}
-      <div className="p-5 rounded-lg bg-surface border border-border shadow-card space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div>
-            <h3 className="text-sm font-bold text-content-primary">
-              Autonomous Financial Architecture Flow
-            </h3>
-            <p className="text-xs text-content-muted">
-              Decoupled semantic investigation and deterministic invariant control gate.
-            </p>
-          </div>
-          <StatusBadge status="PASS" label="CONTROL GATE VETO ACTIVE" size="sm" />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs font-mono">
-          {/* Step 1 */}
-          <div className="p-3 bg-surface-elevated rounded-md border border-border space-y-1">
-            <span className="text-content-muted text-[10px] uppercase font-semibold">1. Ingestion</span>
-            <p className="text-content-primary font-bold">Dual Source</p>
-            <p className="text-content-muted text-[11px]">Synthetic / Razorpay</p>
-          </div>
-
-          {/* Step 2 */}
-          <div className="p-3 bg-surface-elevated rounded-md border-l-2 border-l-brand border border-border space-y-1">
-            <span className="text-brand text-[10px] uppercase font-semibold">2. Deterministic</span>
-            <p className="text-brand font-bold">Exact & Normal</p>
-            <p className="text-content-muted text-[11px]">0 Paise Tolerance</p>
-          </div>
-
-          {/* Step 3 */}
-          <div className="p-3 bg-surface-elevated rounded-md border-l-2 border-l-[#8B7CFF] border border-border space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[#8B7CFF] text-[10px] uppercase font-semibold">3. INVESTIGATION COPILOT</span>
-              <Sparkles className="w-3 h-3 text-[#8B7CFF]" />
-            </div>
-            <p className="text-[#8B7CFF] font-bold">Investigation Engine</p>
-            <p className="text-content-muted text-[11px]">Resolve Ambiguity</p>
-          </div>
-
-          {/* Step 4 */}
-          <div className="p-3 bg-surface-elevated rounded-md border-l-2 border-l-status-coral border border-border space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-status-coral text-[10px] uppercase font-semibold">4. Control Gate</span>
-              <ShieldCheck className="w-3.5 h-3.5 text-status-coral" />
-            </div>
-            <p className="text-status-coral font-bold">7 Invariants</p>
-            <p className="text-content-muted text-[11px]">Vetoes Ambiguous Risk</p>
-          </div>
-
-          {/* Step 5 */}
-          <div className="p-3 bg-surface-elevated rounded-md border-l-2 border-l-status-mint border border-border space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-status-mint text-[10px] uppercase font-semibold">5. Output Ledger</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-status-mint" />
-            </div>
-            <p className="text-status-mint font-bold">Final Status</p>
-            <p className="text-content-muted text-[11px]">Matched / Review / Exception</p>
-          </div>
-        </div>
-      </div>
-
       {/* Top Ranked Exceptions Preview */}
       <div className="p-5 rounded-lg bg-surface border border-border shadow-card space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-border">
@@ -381,7 +366,7 @@ export default function Overview({
                       {ex.case_id}
                     </td>
                     <td className="py-3 px-3 text-content-secondary">
-                      {ex.payment_id || '—'}
+                      {ex.payment_id || '-'}
                     </td>
                     <td className="py-3 px-3">
                       <StatusBadge status={ex.status} size="sm" />

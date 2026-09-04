@@ -8,6 +8,13 @@ import uuid
 from collections import Counter
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+try:
+    from backend.ml.match_scorer import get_candidate_scorer
+except ImportError:
+    try:
+        from ml.match_scorer import get_candidate_scorer
+    except ImportError:
+        from ..ml.match_scorer import get_candidate_scorer
 
 # 5,000,000 paise = 50,000 INR
 HIGH_VALUE_THRESHOLD_PAISE = 5000000
@@ -177,6 +184,8 @@ def run_reconciliation(
             "match_method": None,
             "financial_impact": amount,
             "amount_delta": 0,
+            "ml_match_score": None,
+            "ml_rank": None,
             "source": p_source,
             "source_record_id": p.get("source_record_id") or pay_id,
             "sync_id": p_sync_id,
@@ -204,6 +213,8 @@ def run_reconciliation(
                         allocated_settlement_ids.add(s["settlement_id"])
                     case["settlement_id"] = ",".join(s["settlement_id"] for s in unallocated_grouped)
                     case["amount_delta"] = 0
+                    case["ml_match_score"] = 1.0
+                    case["ml_rank"] = 1
                     case["candidate"] = {
                         "match_method": "GROUPED",
                         "amount_delta": 0,
@@ -215,6 +226,9 @@ def run_reconciliation(
                         "currency_mismatch": False,
                         "grouped_allocation": True,
                         "settlement_count": len(unallocated_grouped),
+                        "ml_match_score": 1.0,
+                        "ml_rank": 1,
+                        "ml_score_margin": 1.0,
                     }
                     case["match_method"] = "GROUPED"
                     case["status"] = "MATCHED"
@@ -255,6 +269,9 @@ def run_reconciliation(
             s_currency = str(s_match.get("currency", "INR")).upper()
             delta = abs(amount - gross)
             case["amount_delta"] = delta
+            id_score = 1.0 if match_type == "EXACT_ID" else 0.99
+            case["ml_match_score"] = id_score
+            case["ml_rank"] = 1
 
             # Duplicate allocation check (already allocated or multiple payments claiming it)
             is_duplicate = (matched_setl_id in allocated_settlement_ids) or is_duplicate_claim
@@ -274,6 +291,9 @@ def run_reconciliation(
                     "duplicate_allocation": False,
                     "unexplained_delta": False,
                     "currency_mismatch": False,
+                    "ml_match_score": id_score,
+                    "ml_rank": 1,
+                    "ml_score_margin": id_score,
                 }
                 if match_type == "NORMALIZED_ID":
                     case["ai_reason"] = "Deterministic normalized identifier match verified with 100% mathematical certainty."
@@ -292,6 +312,9 @@ def run_reconciliation(
                     "duplicate_allocation": is_duplicate,
                     "unexplained_delta": unexplained_delta,
                     "currency_mismatch": curr_mismatch,
+                    "ml_match_score": id_score,
+                    "ml_rank": 1,
+                    "ml_score_margin": id_score,
                 }
                 case["ai_reason"] = (
                     "AI Investigated. Reason: Duplicate claim, non-zero delta, or conflicting settlement evidence required investigation."
@@ -304,40 +327,71 @@ def run_reconciliation(
                 if int(s.get("gross_amount", 0)) == amount and s.get("settlement_id") not in allocated_settlement_ids
             ]
 
-            if len(amount_candidates) == 1:
-                cand = amount_candidates[0]
+            if amount_candidates:
+                scorer = get_candidate_scorer()
+                ranked = scorer.rank_candidates(p, amount_candidates)
+                top_item = ranked[0]
+                cand = top_item["candidate"]
                 cand_id = cand["settlement_id"]
-                case["settlement_id"] = cand_id
-                allocated_settlement_ids.add(cand_id)
+                cand_score = top_item["ml_match_score"]
+                cand_margin = top_item["ml_score_margin"]
                 cand_wf = compute_settlement_waterfall(cand)
-                case["candidate"] = {
-                    "match_method": "AMOUNT_DATE",
-                    "amount_delta": cand_wf["unexplained_delta"],
-                    "multiple_candidates": False,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": True,  # Missing exact reference ID
-                    "duplicate_allocation": False,
-                    "unexplained_delta": cand_wf["unexplained_delta"] > 0,
-                    "currency_mismatch": p_currency != str(cand.get("currency", "INR")).upper(),
-                }
-                case["ai_reason"] = (
-                    "AI Investigated. Reason: Missing exact identifier; amount heuristic required semantic verification."
-                )
-            elif len(amount_candidates) > 1:
-                case["candidate"] = {
-                    "match_method": "MULTIPLE",
-                    "amount_delta": 0,
-                    "multiple_candidates": True,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": True,
-                    "duplicate_allocation": False,
-                    "unexplained_delta": False,
-                    "currency_mismatch": False,
-                }
-                case["ai_reason"] = (
-                    "AI Investigated. Reason: Multiple candidate settlements matched transaction amount."
-                )
+
+                case["settlement_id"] = cand_id
+                case["ml_match_score"] = cand_score
+                case["ml_rank"] = 1
+
+                if len(amount_candidates) == 1:
+                    allocated_settlement_ids.add(cand_id)
+                    case["candidate"] = {
+                        "match_method": "AMOUNT_DATE",
+                        "amount_delta": cand_wf["unexplained_delta"],
+                        "multiple_candidates": False,
+                        "high_value": is_high_val,
+                        "conflicting_evidence": True,  # Missing exact reference ID
+                        "duplicate_allocation": False,
+                        "unexplained_delta": cand_wf["unexplained_delta"] > 0,
+                        "currency_mismatch": p_currency != str(cand.get("currency", "INR")).upper(),
+                        "ml_match_score": cand_score,
+                        "ml_rank": 1,
+                        "ml_score_margin": cand_margin,
+                        "ml_candidates_ranked": 1,
+                    }
+                    case["ai_reason"] = (
+                        f"AI Investigated. Reason: Missing exact identifier; ML Candidate Scorer matched {cand_id} "
+                        f"(score: {cand_score:.2f}). Forwarded for verification."
+                    )
+                else:
+                    top_summary = [
+                        {
+                            "settlement_id": r["candidate"]["settlement_id"],
+                            "score": r["ml_match_score"],
+                            "rank": r["ml_rank"],
+                        }
+                        for r in ranked[:3]
+                    ]
+                    case["candidate"] = {
+                        "match_method": "MULTIPLE",
+                        "amount_delta": cand_wf["unexplained_delta"],
+                        "multiple_candidates": True,
+                        "high_value": is_high_val,
+                        "conflicting_evidence": True,
+                        "duplicate_allocation": False,
+                        "unexplained_delta": cand_wf["unexplained_delta"] > 0,
+                        "currency_mismatch": p_currency != str(cand.get("currency", "INR")).upper(),
+                        "ml_match_score": cand_score,
+                        "ml_rank": 1,
+                        "ml_score_margin": cand_margin,
+                        "ml_candidates_ranked": len(ranked),
+                        "ml_top_candidates": top_summary,
+                    }
+                    case["ai_reason"] = (
+                        f"AI Investigated. Reason: Multiple candidates matched amount; ML ranked {len(ranked)} candidates "
+                        f"(Top match {cand_id} score: {cand_score:.2f}, margin: {cand_margin:.2f})."
+                    )
             else:
+                case["ml_match_score"] = 0.0
+                case["ml_rank"] = None
                 case["candidate"] = {
                     "match_method": "NO_MATCH",
                     "amount_delta": amount,
@@ -347,6 +401,10 @@ def run_reconciliation(
                     "duplicate_allocation": False,
                     "unexplained_delta": False,
                     "currency_mismatch": False,
+                    "ml_match_score": 0.0,
+                    "ml_rank": None,
+                    "ml_score_margin": 0.0,
+                    "ml_candidates_ranked": 0,
                 }
                 case["ai_reason"] = "AI Not required. Reason: No candidate settlement found in current snapshot."
 

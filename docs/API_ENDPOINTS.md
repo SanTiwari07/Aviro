@@ -1,4 +1,4 @@
-# ARIVO — Complete API Endpoints Reference
+# ARIVO - Complete API Endpoints Reference
 
 All endpoints are hosted by FastAPI at `http://localhost:8000` and proxied through Vite at `http://localhost:5173/api/*`.
 

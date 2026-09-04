@@ -4,8 +4,8 @@ All notable changes, architectural upgrades, and bug fixes made to the ARIVO cod
 
 ---
 
-## [Track 04 Major Upgrade — AI Finance Controller] - 2026-09-03
-*Razorpay AI Buildathon 2026 — Track 04 Implementation*
+## [Track 04 Major Upgrade - AI Finance Controller] - 2026-09-03
+*Razorpay AI Buildathon 2026 - Track 04 Implementation*
 
 ### Added
 - **Live Razorpay Test-Mode Integration**:

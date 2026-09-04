@@ -166,12 +166,14 @@ export default function Reconciliation({
                         <div className="flex items-center gap-1.5">
                           <span>{c.case_id}</span>
                           {isFlagship && (
-                            <StatusBadge status="FLAGSHIP" label="FLAGSHIP" size="sm" showDot={false} />
+                            <span className="text-[10px] font-mono text-[#8B7CFF] font-bold">
+                              FLAGSHIP
+                            </span>
                           )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-content-secondary">
-                        {c.payment_id || '—'}
+                        {c.payment_id || '-'}
                       </td>
                       <td className="py-3 px-4 text-content-muted">
                         {c.settlement_id || 'Unallocated'}
@@ -189,7 +191,7 @@ export default function Reconciliation({
                           <div className="flex items-center gap-1.5 text-[#7462F5] dark:text-[#A79CFF]">
                             <Cpu className="w-3.5 h-3.5" />
                             <span className="font-semibold text-[11px]">
-                              {c.ai_recommendation} ({c.ai_confidence ? `${(c.ai_confidence * 100).toFixed(0)}%` : '—'})
+                              {c.ai_recommendation} ({c.ai_confidence ? `${(c.ai_confidence * 100).toFixed(0)}%` : '-'})
                             </span>
                           </div>
                         ) : (

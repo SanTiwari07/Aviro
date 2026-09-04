@@ -10,7 +10,7 @@
 | npm | ≥ 9 | Ships with Node.js |
 | Git | Any | For cloning |
 
-No Docker, no external database server, no Redis — SQLite is used and created automatically.
+No Docker, no external database server, no Redis - SQLite is used and created automatically.
 
 ---
 
@@ -48,9 +48,9 @@ make install
 ```
 
 This runs:
-- `python -m venv venv` — creates a Python virtual environment
-- `.\venv\Scripts\pip install -r backend\requirements.txt` — installs Python packages
-- `cd frontend && npm install` — installs Node packages
+- `python -m venv venv` - creates a Python virtual environment
+- `.\venv\Scripts\pip install -r backend\requirements.txt` - installs Python packages
+- `cd frontend && npm install` - installs Node packages
 
 **Manual equivalent (Windows PowerShell):**
 ```powershell
@@ -82,7 +82,7 @@ This creates `dataset/data/payments.csv` and `dataset/data/settlements.csv` with
 
 You need **two terminals** open simultaneously.
 
-### Terminal 1 — Backend
+### Terminal 1 - Backend
 
 From the **project root** (`d:\Projects\Arivo`):
 
@@ -98,7 +98,7 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://127.0.0.1:8000
 ```
 
-### Terminal 2 — Frontend
+### Terminal 2 - Frontend
 
 ```powershell
 cd frontend
@@ -148,7 +148,7 @@ cd frontend && npm run build
 
 Output goes to `frontend/dist/`. Serve with any static file server.
 
-The backend has no separate build step — serve with a production ASGI server:
+The backend has no separate build step - serve with a production ASGI server:
 
 ```bash
 .\venv\Scripts\python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 2

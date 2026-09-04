@@ -135,6 +135,10 @@ def main():
             actual_settlement += 50
         elif anomaly == "UNEXPLAINED_DELTA":
             actual_settlement -= random.randint(10, 500) * 100
+        elif anomaly == "AMBIGUOUS":
+            set_ref = f"SETTLE-{merchant}-BULK"
+        elif anomaly == "HIGH_VALUE_ANOMALY":
+            set_ref = f"SETTLE-{merchant}-HV"
         
         # Create records
         if anomaly != "MISSING_PAYMENT":

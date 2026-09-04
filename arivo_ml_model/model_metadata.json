@@ -1,0 +1,177 @@
+{
+  "trained_at": "2026-09-04T19:30:31.074661",
+  "random_seed": 20260902,
+  "algorithm": "XGBoostClassifier",
+  "objective": "binary:logistic",
+  "features": [
+    "amount_delta",
+    "amount_ratio",
+    "amount_exact_match",
+    "date_delta_days",
+    "date_within_window",
+    "merchant_match",
+    "currency_match",
+    "reference_similarity",
+    "reference_exact_match",
+    "candidate_count"
+  ],
+  "dataset_summary": {
+    "total_pairs": 20612,
+    "train_pairs": 14417,
+    "val_pairs": 3102,
+    "test_pairs": 3093,
+    "total_payments": 4849,
+    "positive_ratio": 0.2274
+  },
+  "test_classification_metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "roc_auc": 1.0,
+    "log_loss": 0.0003
+  },
+  "test_ranking_metrics": {
+    "payments_evaluated": 707,
+    "top1_accuracy": 1.0,
+    "top3_accuracy": 1.0,
+    "mrr": 1.0
+  },
+  "slice_metrics": {
+    "AMBIGUOUS": {
+      "total_pairs": 121,
+      "payments_evaluated": 28,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "CHARGEBACK": {
+      "total_pairs": 135,
+      "payments_evaluated": 32,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "CLEAN": {
+      "total_pairs": 1291,
+      "payments_evaluated": 302,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "DUPLICATE": {
+      "total_pairs": 149,
+      "payments_evaluated": 36,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "FEE_VARIANCE": {
+      "total_pairs": 121,
+      "payments_evaluated": 29,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "HIGH_VALUE_ANOMALY": {
+      "total_pairs": 75,
+      "payments_evaluated": 15,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "MISSING_SETTLEMENT": {
+      "total_pairs": 84,
+      "payments_evaluated": 0,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "ONE_TO_MANY": {
+      "total_pairs": 174,
+      "payments_evaluated": 42,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "OTHER": {
+      "total_pairs": 153,
+      "payments_evaluated": 36,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "REFERENCE_TYPO": {
+      "total_pairs": 133,
+      "payments_evaluated": 32,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "REFUND": {
+      "total_pairs": 172,
+      "payments_evaluated": 41,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "TAX_VARIANCE": {
+      "total_pairs": 165,
+      "payments_evaluated": 39,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "TIMING_DIFFERENCE": {
+      "total_pairs": 149,
+      "payments_evaluated": 35,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    },
+    "UNEXPLAINED_DELTA": {
+      "total_pairs": 171,
+      "payments_evaluated": 40,
+      "top1_accuracy": 1.0,
+      "f1_score": 1.0
+    }
+  },
+  "feature_importance": [
+    {
+      "feature": "merchant_match",
+      "gain": 866.3826,
+      "weight": 67
+    },
+    {
+      "feature": "date_delta_days",
+      "gain": 142.3329,
+      "weight": 158
+    },
+    {
+      "feature": "amount_delta",
+      "gain": 65.3051,
+      "weight": 43
+    },
+    {
+      "feature": "amount_ratio",
+      "gain": 27.0016,
+      "weight": 8
+    },
+    {
+      "feature": "amount_exact_match",
+      "gain": 13.1468,
+      "weight": 1
+    },
+    {
+      "feature": "reference_similarity",
+      "gain": 12.3042,
+      "weight": 134
+    },
+    {
+      "feature": "reference_exact_match",
+      "gain": 3.8965,
+      "weight": 15
+    },
+    {
+      "feature": "candidate_count",
+      "gain": 2.4376,
+      "weight": 52
+    },
+    {
+      "feature": "date_within_window",
+      "gain": 2.4303,
+      "weight": 9
+    },
+    {
+      "feature": "currency_match",
+      "gain": 0.0,
+      "weight": 0
+    }
+  ]
+}

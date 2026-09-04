@@ -74,7 +74,9 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
           <div className="p-6 rounded-lg bg-surface border-l-4 border-l-[#8B7CFF] border border-border shadow-card space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <StatusBadge status="FLAGSHIP" label="FLAGSHIP AI SAFETY DEMO" size="md" />
+                <span className="text-xs font-mono font-bold tracking-wider text-[#7462F5] dark:text-[#A79CFF] uppercase">
+                  FLAGSHIP AI SAFETY DEMO
+                </span>
               </div>
               <span className="text-xs font-mono text-content-muted">
                 Entity: <strong className="text-content-primary font-bold">{demo?.record_id || 'PAY_FLAGSHIP_001'}</strong> • Amount: <strong className="text-[#D98A26] dark:text-[#FFB454] font-bold">{demo?.amount_inr || '₹2,49,999.00'}</strong>
@@ -154,7 +156,9 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   Empirical evaluation of false-positives and capital protection across 5,114 ground-truth cases.
                 </p>
               </div>
-              <StatusBadge status="PASS" label="0 FALSE AUTO-MATCHES" size="sm" />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#04DB7C]">
+                0 FALSE AUTO-MATCHES
+              </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,7 +168,9 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <span className="text-xs font-bold text-content-secondary">
                     Naive Rule Engine (Baseline)
                   </span>
-                  <StatusBadge status="BLOCK" label="HIGH RISK" size="sm" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#FF647C]">
+                    HIGH RISK
+                  </span>
                 </div>
 
                 <div className="space-y-2 text-xs font-mono">
@@ -208,11 +214,10 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                     <span className="text-xs font-bold text-content-primary">
                       ARIVO Invariant Controller
                     </span>
-                    <span className="text-[9px] uppercase font-mono px-1.5 py-0.2 rounded bg-brand/15 text-brand font-bold">
-                      ACTIVE ENGINE
-                    </span>
                   </div>
-                  <StatusBadge status="PASS" label="ZERO ERROR" size="sm" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#04DB7C]">
+                    ZERO ERROR
+                  </span>
                 </div>
 
                 <div className="space-y-2 text-xs font-mono">

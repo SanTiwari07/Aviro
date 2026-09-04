@@ -12,11 +12,18 @@ Calculates:
 """
 
 import os
+import sys
 import csv
 import json
 import time
+from pathlib import Path
 from collections import Counter
 from typing import Dict, Any, List
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 HIGH_VALUE_THRESHOLD_PAISE = 5000000
 
@@ -52,7 +59,7 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
 
     start_time = time.time()
 
-    # --- SIMULATION 1: Pure Rule-Based Baseline (No Control Gate, No Gemini) ---
+    # --- SIMULATION 1: Pure Rule-Based Baseline (No Control Gate, No ML, No Gemini) ---
     # Baseline matches on reference OR amount match without gating high-value or ambiguity
     settlements_by_ref = {s["payment_reference"]: s for s in settlements}
     baseline_matched = 0
@@ -66,7 +73,6 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
         if s and s["gross_amount"] == p["amount"]:
             matched = True
         elif not s:
-            # Baseline naive heuristic: matches if single settlement has same amount
             matching_amounts = [x for x in settlements if x["gross_amount"] == p["amount"]]
             if len(matching_amounts) == 1:
                 matched = True
@@ -78,191 +84,104 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
                 baseline_false_matches += 1
                 baseline_false_exposure += p["amount"]
 
-    # --- SIMULATION 2: ARIVO (Engine + Control Gate + AI Safety Guard) ---
-    arivo_matched = 0
-    arivo_review = 0
-    arivo_exception = 0
-    arivo_false_matches = 0
-    arivo_false_exposure = 0
+    # --- SIMULATION 2: ARIVO Core (Deterministic + ML Candidate Ranking + Control Gate) ---
+    from backend.engine.reconciliation import run_reconciliation
+    from backend.engine.control_gate import validate_match, decide_final_status
+
+    core_cases = run_reconciliation(
+        [dict(p) for p in payments],
+        [dict(s) for s in settlements],
+        run_id="BENCHMARK_CORE_RUN",
+    )
+
+    core_matched = 0
+    core_review = 0
+    core_exception = 0
+    core_false_matches = 0
+    core_false_exposure = 0
+
+    for case in core_cases:
+        status = case["status"]
+        amt = case["amount"]
+        gt = gt_by_pay.get(case["payment_id"])
+        if status == "MATCHED":
+            core_matched += 1
+            if gt and gt.get("expected_decision") != "MATCHED":
+                core_false_matches += 1
+                core_false_exposure += amt
+        elif status == "REVIEW":
+            core_review += 1
+        else:
+            core_exception += 1
+
+    # --- SIMULATION 3: ARIVO Full (Deterministic + ML + Gemini + Control Gate) ---
+    full_matched = 0
+    full_review = 0
+    full_exception = 0
+    full_false_matches = 0
+    full_false_exposure = 0
     unsafe_ai_blocked_by_control = 0
     exposure_prevented = 0
     ambiguous_investigated = 0
 
-    settlements_allocated: set = set()
-    pay_ref_counts = Counter(p.get("reference") or f"REF-{p['payment_id']}" for p in payments)
-
-    for p in payments:
-        amt = p["amount"]
+    for case in core_cases:
+        cand = dict(case.get("candidate", {}))
+        amt = case["amount"]
         is_high_val = amt >= HIGH_VALUE_THRESHOLD_PAISE
-        expected_ref = f"REF-{p['payment_id']}"
-        p_ref = p.get("reference")
-        is_duplicate_claim = (pay_ref_counts.get(expected_ref, 0) > 1) or (bool(p_ref) and pay_ref_counts.get(p_ref, 0) > 1)
-        s = settlements_by_ref.get(expected_ref)
+        is_ambiguous = cand.get("conflicting_evidence") or cand.get("multiple_candidates")
 
-        candidate = {}
-        if s:
-            wf_gross = int(s.get("gross_amount", 0))
-            wf_fees = int(s.get("fees", 0))
-            wf_tax = int(s.get("tax", 0))
-            wf_refunds = int(s.get("refunds", 0))
-            wf_chargebacks = int(s.get("chargebacks", 0))
-            wf_adj = int(s.get("adjustments", 0))
-            expected_net = wf_gross - wf_fees - wf_tax - wf_refunds - wf_chargebacks + wf_adj
-            actual_net = int(s.get("net_amount", wf_gross))
-            waterfall_delta = abs(expected_net - actual_net)
-            unexplained_delta = (waterfall_delta > 0) or (int(s.get("unexplained_delta", 0)) > 0)
-
-            delta = abs(amt - wf_gross)
-            is_dup = (s["settlement_id"] in settlements_allocated) or is_duplicate_claim
-            settlements_allocated.add(s["settlement_id"])
-
-            if delta == 0 and not is_dup and not unexplained_delta:
-                candidate = {
-                    "match_method": "EXACT_ID",
-                    "amount_delta": 0,
-                    "multiple_candidates": False,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": False,
-                    "unexplained_delta": False,
-                }
-            else:
-                method = "AMOUNT_MISMATCH" if delta != 0 else (
-                    "DUPLICATE" if is_dup else "WATERFALL_ANOMALY"
-                )
-                effective_delta = delta if delta != 0 else max(waterfall_delta, int(s.get("unexplained_delta", 0)))
-                candidate = {
-                    "match_method": method,
-                    "amount_delta": effective_delta,
-                    "multiple_candidates": False,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": True,
-                    "unexplained_delta": unexplained_delta,
-                }
-        else:
-            candidates = [x for x in settlements if x["gross_amount"] == amt and x["settlement_id"] not in settlements_allocated]
-            if len(candidates) == 1:
-                cand = candidates[0]
-                settlements_allocated.add(cand["settlement_id"])
-                cand_gross = int(cand.get("gross_amount", 0))
-                cand_fees = int(cand.get("fees", 0))
-                cand_tax = int(cand.get("tax", 0))
-                cand_refunds = int(cand.get("refunds", 0))
-                cand_chargebacks = int(cand.get("chargebacks", 0))
-                cand_adj = int(cand.get("adjustments", 0))
-                c_expected_net = cand_gross - cand_fees - cand_tax - cand_refunds - cand_chargebacks + cand_adj
-                c_actual_net = int(cand.get("net_amount", cand_gross))
-                c_waterfall_delta = abs(c_expected_net - c_actual_net)
-                c_unexplained = (c_waterfall_delta > 0) or (int(cand.get("unexplained_delta", 0)) > 0)
-
-                candidate = {
-                    "match_method": "AMOUNT_DATE",
-                    "amount_delta": c_waterfall_delta,
-                    "multiple_candidates": False,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": True,
-                    "unexplained_delta": c_unexplained,
-                }
-            elif len(candidates) > 1:
-                candidate = {
-                    "match_method": "MULTIPLE",
-                    "amount_delta": 0,
-                    "multiple_candidates": True,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": True,
-                    "unexplained_delta": False,
-                }
-            else:
-                candidate = {
-                    "match_method": "NO_MATCH",
-                    "amount_delta": amt,
-                    "multiple_candidates": False,
-                    "high_value": is_high_val,
-                    "conflicting_evidence": False,
-                    "unexplained_delta": False,
-                }
-
-        # Control gate evaluation
-        reasons = []
-        if candidate.get("amount_delta", 0) != 0:
-            reasons.append("Non-zero amount delta.")
-        if candidate.get("multiple_candidates"):
-            reasons.append("Multiple candidates.")
-        if candidate.get("high_value") and candidate.get("conflicting_evidence"):
-            reasons.append("High-value transaction with ambiguity.")
-        if candidate.get("conflicting_evidence"):
-            reasons.append("Conflicting evidence.")
-        if candidate.get("unexplained_delta"):
-            reasons.append("Unexplained settlement waterfall delta.")
-
-        control_result = "BLOCK" if reasons else "PASS"
-
-        # AI investigation simulation for ambiguous cases
         ai_recommendation = None
-        if candidate.get("conflicting_evidence") or candidate.get("multiple_candidates"):
+        if is_ambiguous:
             ambiguous_investigated += 1
-            # Simulate realistic AI behavior: occasionally overconfident on heuristic amount matches
-            if candidate["match_method"] == "AMOUNT_DATE" and is_high_val:
-                ai_recommendation = "MATCHED"  # Overconfident AI!
-            elif candidate.get("amount_delta", 0) > 0 or candidate.get("unexplained_delta"):
+            ml_score = cand.get("ml_match_score", 0.0) or 0.0
+            # Realistic LLM investigator simulation:
+            # When ML score is very high (>=0.95) and no amount delta, LLM strongly recommends MATCHED
+            if ml_score >= 0.95 and cand.get("amount_delta", 0) == 0:
+                ai_recommendation = "MATCHED"
+            elif cand.get("amount_delta", 0) > 0 or cand.get("unexplained_delta"):
                 ai_recommendation = "EXCEPTION"
             else:
                 ai_recommendation = "REVIEW"
 
-        # Check if Control Gate blocked unsafe AI match
-        if control_result == "BLOCK" and ai_recommendation == "MATCHED":
+        # Control gate retains absolute veto authority over AI recommendations
+        control_gate = validate_match(cand)
+        if control_gate["result"] == "BLOCK" and ai_recommendation == "MATCHED":
             unsafe_ai_blocked_by_control += 1
             exposure_prevented += amt
 
-        # Final decision
-        if control_result == "BLOCK":
-            if (
-                ai_recommendation == "EXCEPTION"
-                or candidate.get("unexplained_delta")
-                or candidate.get("match_method") in ("WATERFALL_ANOMALY", "NO_MATCH")
-            ):
-                final_status = "EXCEPTION"
-            else:
-                final_status = "REVIEW"
-        elif candidate.get("match_method") == "EXACT_ID":
-            final_status = "MATCHED"
-        elif ai_recommendation == "MATCHED":
-            final_status = "MATCHED"
-        elif ai_recommendation == "EXCEPTION":
-            final_status = "EXCEPTION"
-        else:
-            final_status = "REVIEW"
+        cand["ai_recommendation"] = ai_recommendation
+        final_status = decide_final_status(cand, control_gate)
 
+        gt = gt_by_pay.get(case["payment_id"])
         if final_status == "MATCHED":
-            arivo_matched += 1
-            gt = gt_by_pay.get(p["payment_id"])
+            full_matched += 1
             if gt and gt.get("expected_decision") != "MATCHED":
-                arivo_false_matches += 1
-                arivo_false_exposure += amt
+                full_false_matches += 1
+                full_false_exposure += amt
         elif final_status == "REVIEW":
-            arivo_review += 1
+            full_review += 1
         else:
-            arivo_exception += 1
+            full_exception += 1
 
     elapsed = time.time() - start_time
     total = len(payments)
     throughput = round(total / max(0.001, elapsed), 1)
 
-    # Calculate Precision, Recall, F1
     true_matches = sum(1 for row in ground_truth if row.get("expected_decision") == "MATCHED")
-    tp = arivo_matched - arivo_false_matches
-    fp = arivo_false_matches
-    fn = max(0, true_matches - tp)
 
-    precision = round(tp / max(1, (tp + fp)), 4)
-    recall = round(tp / max(1, (tp + fn)), 4)
-    f1 = round(2 * (precision * recall) / max(0.0001, (precision + recall)), 4)
+    # Metrics helper
+    def calc_metrics(matched, false_matches):
+        tp = matched - false_matches
+        fp = false_matches
+        fn = max(0, true_matches - tp)
+        prec = round(tp / max(1, (tp + fp)), 4)
+        rec = round(tp / max(1, (tp + fn)), 4)
+        f1 = round(2 * (prec * rec) / max(0.0001, (prec + rec)), 4)
+        return prec, rec, f1
 
-    baseline_tp = baseline_matched - baseline_false_matches
-    baseline_fp = baseline_false_matches
-    baseline_fn = max(0, true_matches - baseline_tp)
-    b_prec = round(baseline_tp / max(1, (baseline_tp + baseline_fp)), 4)
-    b_rec = round(baseline_tp / max(1, (baseline_tp + baseline_fn)), 4)
-    b_f1 = round(2 * (b_prec * b_rec) / max(0.0001, (b_prec + b_rec)), 4)
+    b_prec, b_rec, b_f1 = calc_metrics(baseline_matched, baseline_false_matches)
+    c_prec, c_rec, c_f1 = calc_metrics(core_matched, core_false_matches)
+    f_prec, f_rec, f_f1 = calc_metrics(full_matched, full_false_matches)
 
     return {
         "status": "SUCCESS",
@@ -281,22 +200,44 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
                 "f1_score": b_f1,
             },
             "arivo": {
-                "name": "ARIVO (Engine + Gemini + Control Gate)",
-                "matched": arivo_matched,
-                "review": arivo_review,
-                "exception": arivo_exception,
-                "false_auto_matches": arivo_false_matches,
-                "false_match_exposure_paise": arivo_false_exposure,
-                "precision": precision,
-                "recall": recall,
-                "f1_score": f1,
+                "name": "ARIVO Core (Rules + ML Ranking + Control Gate)",
+                "matched": core_matched,
+                "review": core_review,
+                "exception": core_exception,
+                "false_auto_matches": core_false_matches,
+                "false_match_exposure_paise": core_false_exposure,
+                "precision": c_prec,
+                "recall": c_rec,
+                "f1_score": c_f1,
+            },
+            "arivo_core": {
+                "name": "ARIVO Core (Rules + ML Ranking + Control Gate)",
+                "matched": core_matched,
+                "review": core_review,
+                "exception": core_exception,
+                "false_auto_matches": core_false_matches,
+                "false_match_exposure_paise": core_false_exposure,
+                "precision": c_prec,
+                "recall": c_rec,
+                "f1_score": c_f1,
+            },
+            "arivo_full": {
+                "name": "ARIVO Full (Rules + ML + Gemini + Control Gate)",
+                "matched": full_matched,
+                "review": full_review,
+                "exception": full_exception,
+                "false_auto_matches": full_false_matches,
+                "false_match_exposure_paise": full_false_exposure,
+                "precision": f_prec,
+                "recall": f_rec,
+                "f1_score": f_f1,
             },
         },
         "ai_value_and_safety": {
             "ambiguous_cases_investigated": ambiguous_investigated,
             "unsafe_ai_matches_blocked": unsafe_ai_blocked_by_control,
-            "financial_exposure_prevented_paise": exposure_prevented + (baseline_false_exposure - arivo_false_exposure),
-            "false_matches_prevented": baseline_false_matches - arivo_false_matches,
+            "financial_exposure_prevented_paise": baseline_false_exposure - full_false_exposure,
+            "false_matches_prevented": baseline_false_matches - full_false_matches,
         },
         "flagship_safety_demo": {
             "scenario": "High-Value Transaction Ambiguity Gate",
@@ -322,7 +263,7 @@ def main():
         pass
     res = run_benchmark_evaluation()
     print("\n========================================================")
-    print("           ARIVO CONTROLLED BENCHMARK RESULTS           ")
+    print("           ARIVO 3-WAY BENCHMARK EVALUATION           ")
     print("========================================================")
     if res.get("status") != "SUCCESS":
         print(f"Error: {res.get('error')}")
@@ -330,21 +271,28 @@ def main():
 
     m = res["metrics"]
     b = m["baseline"]
-    a = m["arivo"]
+    c = m["arivo_core"]
+    f = m["arivo_full"]
     ai = res["ai_value_and_safety"]
 
     print(f"Dataset Size:           {res['dataset_size']} records")
     print(f"Throughput:             {res['throughput_records_per_sec']} records/sec")
-    print("\nMETRIC COMPARISON:")
-    print(f"  Precision:            Baseline: {b['precision'] * 100:.2f}%  ->  ARIVO: {a['precision'] * 100:.2f}%")
-    print(f"  Recall:               Baseline: {b['recall'] * 100:.2f}%  ->  ARIVO: {a['recall'] * 100:.2f}%")
-    print(f"  F1 Score:             Baseline: {b['f1_score']:.4f}     ->  ARIVO: {a['f1_score']:.4f}")
-    print(f"  False Auto-Matches:   Baseline: {b['false_auto_matches']}        ->  ARIVO: {a['false_auto_matches']}")
-    print(f"  False Exposure:       Baseline: Rs. {b['false_match_exposure_paise']/100:,.2f} -> ARIVO: Rs. {a['false_match_exposure_paise']/100:,.2f}")
+    print("\n3-TIER SYSTEM COMPARISON:")
+    print(f"{'Metric':<24} | {'1. Naive Baseline':<18} | {'2. ARIVO Core (ML)':<18} | {'3. ARIVO Full (Gemini)':<18}")
+    print("-" * 86)
+    print(f"{'Matched Cases':<24} | {b['matched']:<18} | {c['matched']:<18} | {f['matched']:<18}")
+    print(f"{'False Auto-Matches':<24} | {b['false_auto_matches']:<18} | {c['false_auto_matches']:<18} | {f['false_auto_matches']:<18}")
+    print(f"{'Precision':<24} | {b['precision'] * 100:.2f}%{'':<11} | {c['precision'] * 100:.2f}%{'':<11} | {f['precision'] * 100:.2f}%{'':<11}")
+    print(f"{'Recall':<24} | {b['recall'] * 100:.2f}%{'':<11} | {c['recall'] * 100:.2f}%{'':<11} | {f['recall'] * 100:.2f}%{'':<11}")
+    print(f"{'F1 Score':<24} | {b['f1_score']:.4f}{'':<12} | {c['f1_score']:.4f}{'':<12} | {f['f1_score']:.4f}{'':<12}")
+    print(f"{'False Exposure':<24} | Rs. {b['false_match_exposure_paise']/100:>13,.2f} | Rs. {c['false_match_exposure_paise']/100:>13,.2f} | Rs. {f['false_match_exposure_paise']/100:>13,.2f}")
+
     print("\nMEASURABLE AI VALUE & SAFETY:")
     print(f"  Ambiguous Cases Investigated:      {ai['ambiguous_cases_investigated']}")
     print(f"  Unsafe AI Matches Blocked:         {ai['unsafe_ai_matches_blocked']}")
     print(f"  Financial Exposure Prevented:      Rs. {ai['financial_exposure_prevented_paise']/100:,.2f}")
+    print(f"  False Matches Eliminated:          {ai['false_matches_prevented']}")
+
     print("\nFLAGSHIP SAFETY DEMO:")
     demo = res["flagship_safety_demo"]
     print(f"  Record:             {demo['record_id']} ({demo['amount_inr']})")

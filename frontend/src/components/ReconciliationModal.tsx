@@ -47,7 +47,22 @@ export default function ReconciliationModal({
     }
   }, [isOpen]);
 
+  // Handle ESC key to close modal when not running
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !running) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, running, onClose]);
+
   const handleStart = async () => {
+    if (running) return;
     setRunning(true);
     setError(null);
     setResult(null);
@@ -225,7 +240,7 @@ export default function ReconciliationModal({
                   {result.duration_ms && (
                     <div className="flex items-center justify-between text-xs font-mono text-content-muted px-1">
                       <span>Execution Duration: {result.duration_ms} ms</span>
-                      <span>Throughput: {result.throughput || '—'} txns/s</span>
+                      <span>Throughput: {result.throughput || '-'} txns/s</span>
                     </div>
                   )}
                 </motion.div>
