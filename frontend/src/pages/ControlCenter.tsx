@@ -380,7 +380,7 @@ export default function ControlCenter({ onRunCompleted }: ControlCenterProps) {
                         <div className="p-3 rounded border border-dashed border-border bg-surface-elevated text-center space-y-1">
                           <UploadCloud className="w-5 h-5 mx-auto text-content-muted" />
                           <p className="text-xs text-content-secondary font-medium">
-                            {csvFile ? csvFile.name : 'Upload custom payments & settlements CSV'}
+                            {csvFile ? 'Multiple files loaded' : 'Upload custom payments & settlements CSV(s)'}
                           </p>
                           <p className="text-[10px] font-mono text-content-muted">
                             Standard CSV format: payment_id, amount, currency, settlement_id, fees
@@ -388,23 +388,41 @@ export default function ControlCenter({ onRunCompleted }: ControlCenterProps) {
                           <input
                             type="file"
                             accept=".csv"
+                            multiple
                             onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setCsvFile(file);
-                                const reader = new FileReader();
-                                reader.onload = (evt) => {
-                                  try {
-                                    const text = evt.target?.result as string;
-                                    const parsed = parseFinancialCsv(text);
-                                    setImportedRecords(parsed);
-                                    const total = parsed.payments.length + parsed.settlements.length;
-                                    setCsvStatus(`Loaded ${file.name} (${total} valid records: ${parsed.payments.length} payments, ${parsed.settlements.length} settlements)`);
-                                  } catch {
-                                    setCsvStatus(`Loaded ${file.name}`);
-                                  }
-                                };
-                                reader.readAsText(file);
+                              const files = e.target.files;
+                              if (files && files.length > 0) {
+                                // Save the first file to trigger the UI state change
+                                setCsvFile(files[0]);
+                                
+                                let combinedPayments: any[] = [];
+                                let combinedSettlements: any[] = [];
+                                let filesProcessed = 0;
+                                
+                                Array.from(files).forEach(file => {
+                                  const reader = new FileReader();
+                                  reader.onload = (evt) => {
+                                    try {
+                                      const text = evt.target?.result as string;
+                                      const parsed = parseFinancialCsv(text);
+                                      combinedPayments = [...combinedPayments, ...parsed.payments];
+                                      combinedSettlements = [...combinedSettlements, ...parsed.settlements];
+                                    } catch (err) {
+                                      console.error(`Error parsing ${file.name}`, err);
+                                    }
+                                    
+                                    filesProcessed++;
+                                    if (filesProcessed === files.length) {
+                                      setImportedRecords({ 
+                                        payments: combinedPayments, 
+                                        settlements: combinedSettlements 
+                                      });
+                                      const total = combinedPayments.length + combinedSettlements.length;
+                                      setCsvStatus(`Loaded ${files.length} files (${total} valid records: ${combinedPayments.length} payments, ${combinedSettlements.length} settlements)`);
+                                    }
+                                  };
+                                  reader.readAsText(file);
+                                });
                               }
                             }}
                             className="hidden"
@@ -414,7 +432,7 @@ export default function ControlCenter({ onRunCompleted }: ControlCenterProps) {
                             htmlFor="csv-file-input"
                             className="inline-block mt-1 px-2.5 py-1 rounded text-xs font-mono bg-surface hover:bg-surface-sunken border border-border cursor-pointer text-brand"
                           >
-                            Browse file...
+                            Browse files...
                           </label>
                         </div>
                         {csvStatus && (
