@@ -1,8 +1,8 @@
 # ARIVO System Design & Architecture Specification
 
-> **Positioning:** *"Know where every rupee went — or know exactly why you don't."*  
+> **Positioning:** *"Know where every rupee went  or know exactly why you don't."*  
 > **Core Principle:** *"AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity."*  
-> **Target:** Razorpay AI Buildathon 2026 — Track 04: AI Finance Controller  
+> **Target:** Razorpay AI Buildathon 2026  Track 04: AI Finance Controller  
 > **Version:** 2.0.0 (Production Architecture Specification)
 
 ---
@@ -256,12 +256,12 @@ A foundational architectural requirement in ARIVO is an uncompromising separatio
 
 ARIVO's matching engine (`backend/engine/reconciliation.py`) implements five distinct matching strategies executed in order of precedence:
 
-### 1. `EXACT_ID` (Highest Confidence — Deterministic)
+### 1. `EXACT_ID` (Highest Confidence  Deterministic)
 - Matches payment record to settlement batch where `payment.payment_id == settlement.payment_id` or `payment.order_id == settlement.order_id`.
 - Validates that amount delta is exactly 0 paise.
 - **Classification:** Auto-resolves to `MATCHED` if Control Gate passes.
 
-### 2. `AMOUNT_TIMESTAMP` (Single Candidate — Deterministic)
+### 2. `AMOUNT_TIMESTAMP` (Single Candidate  Deterministic)
 - Applied when unique ID is missing or masked.
 - Searches candidate window: settlement timestamp $\in [T_{\text{payment}}, T_{\text{payment}} + 72\text{ hours}]$.
 - Requires **exactly one** candidate settlement batch with identical gross amount.
@@ -272,7 +272,7 @@ ARIVO's matching engine (`backend/engine/reconciliation.py`) implements five dis
 - Uses XGBoost inference across feature vectors (amount similarity, timestamp delta, fee ratio, description similarity).
 - Produces a ranked candidate list. If top score exceeds $0.85$ and second candidate is $< 0.50$, proposed for investigation.
 
-### 4. `MULTIPLE` (Ambiguity Collision — AI Assisted)
+### 4. `MULTIPLE` (Ambiguity Collision  AI Assisted)
 - Occurs when two or more distinct settlements match identical amount and date ranges without unique identifiers.
 - Triggers Gemini 2.5 Flash semantic investigation.
 - **Classification:** Regardless of AI confidence, the Control Gate holds the transaction in `REVIEW`.
@@ -624,4 +624,4 @@ ARIVO's architecture provides a clear path for horizontal enterprise scaling:
 
 ---
 
-*ARIVO System Design Specification — Authored for the Razorpay AI Buildathon 2026.*
+*ARIVO System Design Specification  Authored for the Razorpay AI Buildathon 2026.*

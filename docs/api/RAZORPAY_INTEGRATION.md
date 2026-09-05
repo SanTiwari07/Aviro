@@ -1,4 +1,4 @@
-# Razorpay Integration Guide — ARIVO Finance Controller
+# Razorpay Integration Guide  ARIVO Finance Controller
 
 > **Track:** Razorpay AI Buildathon 2026 (Track 04: AI Finance Controller)  
 > **Source Modules:** `backend/integrations/razorpay/` (`client.py`, `normalizer.py`, `sync.py`)
@@ -98,8 +98,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 ## 5. Gateway Endpoints in ARIVO
 
-- `GET /api/razorpay/sync/status` — Current synchronization cursor, connection health, and snapshot stats.
-- `POST /api/razorpay/sync` — Incremental pull of payments and settlements.
-- `POST /api/razorpay/sync/backfill` — Historical date-range backfill.
-- `GET /api/razorpay/settlement-recon` — Gateway-specific batch settlement report.
-- `POST /api/razorpay/webhook` — Real-time event receiver with HMAC-SHA256 validation.
+- `GET /api/razorpay/sync/status`  Current synchronization cursor, connection health, and snapshot stats.
+- `POST /api/razorpay/sync`  Incremental pull of payments and settlements.
+- `POST /api/razorpay/sync/backfill`  Historical date-range backfill.
+- `GET /api/razorpay/settlement-recon`  Gateway-specific batch settlement report.
+- `POST /api/razorpay/webhook`  Real-time event receiver with HMAC-SHA256 validation.
