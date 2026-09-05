@@ -30,7 +30,7 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-from evaluation.benchmark import run_benchmark_evaluation
+from evaluation.benchmark import run_benchmark_evaluation, run_live_gemini_benchmark
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("arivo")
@@ -382,6 +382,13 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
     matched_count = 0
     review_count = 0
     exception_count = 0
+    # Prefetch existing cases for this source to eliminate individual SELECT roundtrips
+    existing_cases_map = {
+        c.case_id: c
+        for c in db.query(database.ReconciliationCase).filter(
+            database.ReconciliationCase.source == source
+        ).all()
+    }
 
     for case_data in cases_data:
         candidate = case_data["candidate"]
@@ -440,10 +447,8 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
         else:
             exception_count += 1
 
-        # Idempotent persistence by unique case_id
-        existing_case = db.query(database.ReconciliationCase).filter(
-            database.ReconciliationCase.case_id == case_data["case_id"]
-        ).first()
+        # Idempotent persistence by unique case_id (fast in-memory map lookup)
+        existing_case = existing_cases_map.get(case_data["case_id"])
 
         if existing_case:
             existing_case.run_id = case_data["run_id"]
@@ -491,6 +496,7 @@ def start_reconciliation(payload: dict = None, db: Session = Depends(database.ge
                 created_at=case_data["created_at"],
             )
             db.add(db_case)
+            existing_cases_map[db_case.case_id] = db_case
 
     elapsed_ms = (time.time() - start_time) * 1000
     throughput = round(len(cases_data) / max(0.001, elapsed_ms / 1000), 1)
@@ -1030,9 +1036,16 @@ def list_runs(db: Session = Depends(database.get_db), limit: int = 50):
 
 
 @app.get("/api/benchmark")
-def get_benchmark():
-    """Runs controlled synthetic benchmark and returns Baseline vs ARIVO evaluation."""
-    return run_benchmark_evaluation()
+def get_benchmark(live_gemini: bool = False, sample_size: int = 10):
+    """
+    Runs controlled synthetic benchmark:
+    - Benchmark A: 5,114-record 4-tier ablation evaluation.
+    - Benchmark B: Optional live Gemini AI verification (live_gemini=True).
+    """
+    res = run_benchmark_evaluation()
+    if live_gemini:
+        res["live_gemini_benchmark"] = run_live_gemini_benchmark(sample_size=sample_size)
+    return res
 
 
 # ---------------------------------------------------------

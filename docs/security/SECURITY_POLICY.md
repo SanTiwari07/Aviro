@@ -7,7 +7,7 @@ Arivo is designed with defensive financial controls and strict data boundaries.
 ## Security Invariants
 
 1. **Deterministic Authority**: AI recommendations never bypass financial validation rules.
-2. **Absolute Threshold Caps**: Transactions exceeding ₹5,000 (500,000 paise) are automatically blocked from automated matching and forced into manual review.
+2. **Absolute Threshold Caps**: Transactions equal to or exceeding ₹50,000.00 (5,000,000 paise) are governed by strict high-value invariants: any candidate ambiguity or missing exact identifier is automatically blocked from automated matching by the Control Gate and forced into manual controller review. (Authoritative canonical source: `backend/engine/control_gate.py` `HIGH_VALUE_THRESHOLD_PAISE = 5000000` and `knowledge/reconciliation_policy.md`).
 3. **Secret Isolation**: External API keys (`GEMINI_API_KEY`) are kept exclusively server-side.
 4. **No Code Execution**: The AI module has no access to shell tools, database query builders, or arbitrary code execution environments.
 
@@ -57,21 +57,31 @@ Even if Gemini returns `MATCHED` with 100% confidence, a `BLOCK` result from the
 
 ## CORS Policy
 
-The development server enables permissive CORS:
+ARIVO restricts CORS origins based on the `ALLOWED_ORIGINS` environment variable, defaulting to trusted local frontend origins:
 ```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_env.strip():
+    allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+else:
+    allowed_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 ```
-**For production:** Restrict `allow_origins` to trusted domain origins (e.g. `["https://arivo.internal.domain.com"]`).
+**For production:** Configure `ALLOWED_ORIGINS` in `.env` to match your production domain.
+
+---
+
+## Audit & Resolution Tracking
+
+- **Case Resolution Tracking**: Manual controller resolutions (`POST /api/reconciliation/{case_id}/resolve`) record the controller identity (`resolved_by`), action (`resolution_action`), audit notes (`resolution_notes`), and timestamp (`resolved_at`) directly in the `reconciliation_cases` ledger.
+- **Run Audit**: Every execution is recorded in the `reconciliation_runs` table with run duration, throughput, and outcome statistics.
 
 ---
 
 ## Known Security Limitations
 
-- **No User Authentication**: Access to endpoints is unauthenticated. Deploy only inside private, secured intranets.
-- **No Audit Log of Human Actions**: While AI actions are logged in SQLite, there is currently no table logging which human reviewed or approved a case.
+- **No User Authentication**: Access to endpoints is unauthenticated in the current internal demonstration environment. Deploy behind a reverse proxy with SSO / OAuth2 for production.
+

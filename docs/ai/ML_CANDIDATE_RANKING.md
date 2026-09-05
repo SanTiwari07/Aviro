@@ -1,9 +1,9 @@
 # Machine Learning Candidate Ranking Engine
 
-> **Module:** `backend/ml/` (`model.py`, `features.py`)  
-> **Framework:** XGBoost 3.4.1 / Scikit-learn 1.9.0  
+> **Module:** `backend/ml/` (`match_scorer.py`, `features.py`)  
+> **Framework:** XGBoost / Scikit-learn  
 > **Training Script:** `scripts/train_ml_model.py`  
-> **Artifact Directory:** `arivo_ml_model/`
+> **Artifact Directory:** `arivo_ml_model/` (`arivo_reconciliation_xgb.pkl`)
 
 ARIVO employs an XGBoost gradient-boosted decision tree pipeline to score and rank candidate settlement matches before invoking generative AI.
 
@@ -52,9 +52,9 @@ To retrain the model against updated reconciliation history:
 ```bash
 python scripts/train_ml_model.py
 ```
-The script trains an `XGBClassifier`, computes precision/recall curves, and exports the serialized model artifact to `arivo_ml_model/model.joblib`.
+The script trains an `XGBClassifier`, computes precision/recall curves, and exports the serialized model artifact to `arivo_ml_model/arivo_reconciliation_xgb.pkl`.
 
 ### Cold-Start Fallback Heuristic
-If `model.joblib` is absent (e.g., initial git clone or scratch container), the system gracefully activates the deterministic heuristic ranker:
+If `arivo_reconciliation_xgb.pkl` is absent (e.g., initial git clone or scratch container), the system gracefully activates the deterministic heuristic ranker:
 $$\text{Score} = \exp\left(-\frac{\Delta_{\text{hours}}}{24}\right) \times \left(1 - \frac{|\Delta_{\text{paise}}|}{\text{Amount}}\right)$$
 This guarantees zero disruption to reconciliation execution.

@@ -1,39 +1,76 @@
+# Environment and Secrets
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
+*.crt
+credentials.json
 
+# Node & Frontend Build Artifacts
 node_modules/
-
 dist/
 build/
 .cache/
 .vite/
 
-__pycache__/
-*.pyc
+# Remotion & Video Artifacts
+demo-video/
+.remotion/
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
 
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
 .venv/
 venv/
 env/
 
+# Testing & Quality Caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
 coverage/
 htmlcov/
+.coverage
+.coverage.*
 
+# Logs, Dumps, and Temporaries
 *.log
 *.tmp
 *.temp
+scratch/
+tmp/
+
+# SQLite & Runtime Database Files
 *.sqlite
 *.sqlite3
 *.db
-arivo.db
+arivo.db*
+*.db-shm
+*.db-wal
 
+# Operating System & Editor Metadata
 .DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
 .idea/
 .vscode/
 
+# Dataset & Benchmark Generated Data
 dataset/data/
 dataset/ground_truth/
+
+# ML Training Datasets and Archive Leftovers
+arivo_ml_model/*.csv
+arivo_ml_model_archive/
+arivo_ml_model/model/
+

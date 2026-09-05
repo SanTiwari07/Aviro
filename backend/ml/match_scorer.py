@@ -18,9 +18,8 @@ from .features import extract_candidate_features, candidate_features_to_vector
 
 logger = logging.getLogger("arivo.ml.scorer")
 
-# Default model artifact locations in order of preference
+# Canonical model artifact location
 MODEL_LOCATIONS = [
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "arivo_ml_model", "model", "arivo_reconciliation_xgb.pkl"),
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "arivo_ml_model", "arivo_reconciliation_xgb.pkl"),
 ]
 

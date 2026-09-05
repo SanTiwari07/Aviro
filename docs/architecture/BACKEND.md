@@ -17,13 +17,13 @@
 ```
 backend/
 ├── __init__.py                  # Package marker
-├── main.py                      # Application entry point, 18 REST endpoints, lifecycle
+├── main.py                      # Application entry point, 20 REST endpoints, lifecycle
 ├── database.py                  # SQLAlchemy engine, schema evolution, DB models
 ├── requirements.txt             # Compatible Python dependencies
-├── arivo.db                     # SQLite database file (integer paise)
 ├── ai/
 │   ├── __init__.py
-│   └── gemini.py                # Gemini investigation + grounded Ask Arivo copilot
+│   ├── gemini.py                # Gemini investigation + grounded Ask Arivo copilot
+│   └── rag.py                   # In-memory policy chunking, retrieval, and synthesis
 ├── engine/
 │   ├── __init__.py
 │   ├── reconciliation.py        # Deterministic matching & duplicate prevention
@@ -37,13 +37,27 @@ backend/
 │       ├── normalizer.py        # Integer paise & settlement waterfall validation
 │       ├── sync.py              # Sync lifecycle & snapshot preservation
 │       └── errors.py            # Structured exception hierarchy
-└── tests/
-    ├── __init__.py
-    ├── test_reconciliation.py   # Core matching & control gate tests
-    ├── test_razorpay_client.py  # Client pagination & auth tests
-    ├── test_normalizer.py       # Normalizer & waterfall tests
-    ├── test_cash_forecast.py    # Cash forecast & health checks
-    └── test_adversarial.py      # Flagship AI safety demo & invariant tests
+├── ml/
+│   ├── __init__.py
+│   ├── features.py              # 8-dimensional candidate feature extraction
+│   └── match_scorer.py          # XGBoost candidate scorer & heuristic fallback
+└── tests/                       # 16 test suites (135 passing tests)
+    ├── test_adversarial.py
+    ├── test_api_idempotency_and_boundaries.py
+    ├── test_benchmark_integrity.py
+    ├── test_cash_forecast.py
+    ├── test_dashboard_and_razorpay_flow.py
+    ├── test_full_qa_pipeline.py
+    ├── test_gemini_failure_modes.py
+    ├── test_grouped_reconciliation.py
+    ├── test_live_api_http.py
+    ├── test_ml_ranking.py
+    ├── test_normalizer.py
+    ├── test_production_hardening.py
+    ├── test_rag_and_resolution.py
+    ├── test_razorpay_client.py
+    ├── test_reconciliation.py
+    └── test_reconciliation_paths.py
 ```
 
 ---

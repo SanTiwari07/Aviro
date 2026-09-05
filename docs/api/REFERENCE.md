@@ -2,7 +2,8 @@
 
 > **Base URL:** `http://localhost:8000` (FastAPI backend)  
 > **Frontend Dev Proxy:** `http://localhost:5173/api/*`  
-> **Specification Format:** OpenAPI 3.0 / FastAPI Automatic Swagger at `/docs`
+> **Interactive Docs:** `http://localhost:8000/docs` (Swagger UI) & `http://localhost:8000/redoc` (ReDoc)  
+> **Specification Format:** OpenAPI 3.0 / FastAPI Automatic Swagger
 
 This document serves as the authoritative REST API specification for ARIVO. All 20 endpoints implemented in `backend/main.py` are documented below with their exact HTTP methods, parameter types, request/response models, and status codes.
 
@@ -11,19 +12,21 @@ This document serves as the authoritative REST API specification for ARIVO. All 
 ## Table of Contents
 
 1. [System & Health](#1-system--health)
-2. [Reconciliation Operations](#2-reconciliation-operations)
-3. [Financial Control Center](#3-financial-control-center)
-4. [AI Investigation & Copilot](#4-ai-investigation--copilot)
-5. [Controlled Benchmark](#5-controlled-benchmark)
-6. [Razorpay Payment Gateway Integration](#6-razorpay-payment-gateway-integration)
-7. [System Administration](#7-system-administration)
+2. [Razorpay Integration & Sync](#2-razorpay-integration--sync)
+3. [Reconciliation Operations](#3-reconciliation-operations)
+4. [Executive Dashboard & Controls](#4-executive-dashboard--controls)
+5. [Exceptions & Audit Export](#5-exceptions--audit-export)
+6. [Settlements & Cash Forecasting](#6-settlements--cash-forecasting)
+7. [AI Grounded Copilot & Policies](#7-ai-grounded-copilot--policies)
+8. [Benchmark & Ablation](#8-benchmark--ablation)
+9. [Webhooks](#9-webhooks)
 
 ---
 
 ## 1. System & Health
 
 ### `GET /api/health`
-Liveness, database readiness, and gateway configuration check.
+Liveness, database connectivity, and configuration check.
 
 - **Request:** None
 - **Response (200 OK):**
@@ -33,25 +36,69 @@ Liveness, database readiness, and gateway configuration check.
   "service": "arivo",
   "version": "2.0.0",
   "database": "connected",
-  "cases_indexed": 30688,
-  "razorpay_configured": true
+  "cases_indexed": 5114,
+  "razorpay_configured": false
 }
 ```
 
 ---
 
-## 2. Reconciliation Operations
+## 2. Razorpay Integration & Sync
 
-### `POST /api/reconcile`
-Executes an idempotent reconciliation run across staged payments and settlement batches.
+### `GET /api/razorpay/status`
+Returns configuration and credential status for Razorpay integration.
 
+- **Response (200 OK):**
+```json
+{
+  "configured": true,
+  "mode": "test",
+  "key_id_masked": "rzp_test_***",
+  "live_ready": false
+}
+```
+
+### `POST /api/razorpay/sync`
+Triggers synchronization from Razorpay test mode API (`payments` and `settlements`).
+
+- **Query Parameters:**
+  - `force` *(optional, bool, default: false)*: Force re-sync even if recently synchronized.
 - **Request Body (JSON, Optional):**
 ```json
 {
-  "source": "synthetic", // or "razorpay"
-  "limit": 1000
+  "mode": "incremental"
 }
 ```
+- **Response (200 OK):**
+```json
+{
+  "sync_id": "SYNC_20260904_120000",
+  "status": "SUCCESS",
+  "source": "razorpay_test",
+  "payments_fetched": 45,
+  "settlements_fetched": 12,
+  "records_normalized": 57,
+  "records_rejected": 0,
+  "pages_fetched": 2,
+  "completed_at": "2026-09-04T12:00:05Z"
+}
+```
+
+### `GET /api/sync/latest`
+Returns metadata and status of the most recent synchronization operation.
+
+- **Response (200 OK):** Latest `SyncRecord` object or `{"latest_sync": null}`.
+
+---
+
+## 3. Reconciliation Operations
+
+### `POST /api/reconciliation/run`
+Executes an idempotent reconciliation run across staged payments and settlement batches.
+
+- **Query Parameters:**
+  - `source` *(optional, string, default: "synthetic")*: Data source (`"synthetic"` or `"razorpay_test"`).
+  - `force` *(optional, bool, default: false)*: Force re-run even if already reconciled.
 - **Response (200 OK):**
 ```json
 {
@@ -63,39 +110,40 @@ Executes an idempotent reconciliation run across staged payments and settlement 
   "review_count": 1849,
   "exception_count": 141,
   "total_financial_exposure_paise": 14284676500,
-  "execution_time_seconds": 3.78
+  "execution_time_seconds": 3.78,
+  "throughput_rec_sec": 1352.6
 }
 ```
 
-### `GET /api/reconciliation/cases`
-Retrieves a paginated list of reconciliation cases with optional status and text filters.
+### `GET /api/reconciliation` (Alias: `GET /api/cases`)
+Retrieves a paginated list of reconciliation cases with status, source, and search filters.
 
 - **Query Parameters:**
   - `status` *(optional, string)*: Filter by `MATCHED`, `REVIEW`, `EXCEPTION`.
-  - `source` *(optional, string)*: Filter by `synthetic` or `razorpay`.
-  - `search` *(optional, string)*: Substring match on `case_id`, `payment_id`, or `order_id`.
-  - `page` *(optional, int, default: 1)*: Page number.
-  - `page_size` *(optional, int, default: 50)*: Items per page.
+  - `source` *(optional, string)*: Filter by `synthetic` or `razorpay_test`.
+  - `search` *(optional, string)*: Substring match on `case_id`, `payment_id`, or `settlement_id`.
+  - `limit` *(optional, int, default: 50)*: Items per page.
+  - `offset` *(optional, int, default: 0)*: Pagination offset.
 - **Response (200 OK):**
 ```json
 {
+  "total": 5114,
+  "limit": 50,
+  "offset": 0,
   "items": [
     {
-      "case_id": "CASE_PAY_4A269938",
-      "payment_id": "PAY_4A269938",
+      "case_id": "CASE_PAY_FLAGSHIP_001",
+      "payment_id": "PAY_FLAGSHIP_001",
+      "settlement_id": "SET_FLAGSHIP_001A",
       "status": "REVIEW",
       "match_method": "MULTIPLE",
       "financial_impact": 60000000,
       "amount_delta": 0,
-      "ml_match_score": 0.94,
+      "ml_match_score": 0.97,
       "source": "synthetic",
       "created_at": "2026-09-04T12:00:00Z"
     }
-  ],
-  "total": 30688,
-  "page": 1,
-  "page_size": 50,
-  "total_pages": 614
+  ]
 }
 ```
 
@@ -103,7 +151,7 @@ Retrieves a paginated list of reconciliation cases with optional status and text
 Returns the complete evidentiary forensic chain for the Evidence Drawer.
 
 - **Path Parameters:**
-  - `case_id` *(string, required)*: The unique case identifier (e.g., `CASE_PAY_FLAGSHIP_001`).
+  - `case_id` *(string, required)*: Case identifier (e.g., `CASE_PAY_FLAGSHIP_001`).
 - **Response (200 OK):**
 ```json
 {
@@ -140,7 +188,7 @@ Returns the complete evidentiary forensic chain for the Evidence Drawer.
     "used": true,
     "recommendation": "MATCHED",
     "confidence": 0.97,
-    "summary": "AI Investigator evaluated payment metadata...",
+    "summary": "AI Investigator evaluated payment metadata against candidate batches.",
     "supporting_evidence": ["Amount matches exactly (Rs. 6,00,000.00)"]
   },
   "control_gate": {
@@ -152,17 +200,16 @@ Returns the complete evidentiary forensic chain for the Evidence Drawer.
   }
 }
 ```
-- **Error (404 Not Found):** `{"detail": "Reconciliation case not found"}`
 
 ### `POST /api/reconciliation/{case_id}/resolve`
-Authoritative controller resolution endpoint. Allows authorized finance controllers to override or confirm case outcomes.
+Authoritative controller resolution endpoint. Allows authorized finance controllers to approve, reject, or escalate cases with audit metadata.
 
 - **Path Parameters:**
   - `case_id` *(string, required)*
 - **Request Body (JSON):**
 ```json
 {
-  "action": "APPROVED", // "APPROVED", "REJECTED", or "ESCALATED"
+  "action": "APPROVED",
   "user": "Lead Controller",
   "notes": "Verified against Axis Bank MT940 statement manually."
 }
@@ -182,11 +229,13 @@ Authoritative controller resolution endpoint. Allows authorized finance controll
 
 ---
 
-## 3. Financial Control Center
+## 4. Executive Dashboard & Controls
 
-### `GET /api/control-center/summary`
-Returns executive-level financial metrics, including processed volume, reconciled volume, and exposure under review.
+### `GET /api/dashboard`
+Returns executive-level financial metrics, volumes, and reconciliation rates.
 
+- **Query Parameters:**
+  - `source` *(optional, string)*: Filter by data source (`"synthetic"` or `"razorpay_test"`).
 - **Response (200 OK):**
 ```json
 {
@@ -195,29 +244,82 @@ Returns executive-level financial metrics, including processed volume, reconcile
   "under_controller_review_paise": 11655086500,
   "critical_exceptions_paise": 2629590000,
   "total_unresolved_exposure_paise": 14284676500,
-  "high_value_items_count": 5642,
-  "reconciliation_rate_pct": 40.59
+  "matched_count": 3124,
+  "review_count": 1849,
+  "exception_count": 141,
+  "total_count": 5114,
+  "reconciliation_rate_pct": 61.09,
+  "active_source": "synthetic"
 }
 ```
 
-### `GET /api/control-center/recent-runs`
-Returns historical execution runs.
+### `GET /api/health/controls`
+Returns the operational integrity status of the 7 core financial invariants.
 
-- **Response (200 OK):** Array of recent run records with timings, match rates, and status.
+- **Response (200 OK):**
+```json
+{
+  "status": "HEALTHY",
+  "invariants_checked": 7,
+  "invariants_passing": 7,
+  "invariants": [
+    {"name": "Zero Amount Delta", "code": "INV_ZERO_DELTA", "status": "PASS"},
+    {"name": "Single Candidate", "code": "INV_SINGLE_CANDIDATE", "status": "PASS"},
+    {"name": "High-Value Boundary", "code": "INV_HIGH_VALUE_THRESHOLD", "status": "PASS"},
+    {"name": "No Conflicting Evidence", "code": "INV_NO_CONFLICTING_EVIDENCE", "status": "PASS"},
+    {"name": "No Double Allocation", "code": "INV_NO_DOUBLE_ALLOCATION", "status": "PASS"},
+    {"name": "Waterfall Integrity", "code": "INV_WATERFALL_INTEGRITY", "status": "PASS"},
+    {"name": "Currency Uniformity", "code": "INV_CURRENCY_INR", "status": "PASS"}
+  ]
+}
+```
 
-### `GET /api/control-center/exceptions`
-Returns prioritized high-exposure exceptions sorted by descending monetary impact.
+### `GET /api/runs`
+Returns historical reconciliation execution records with throughput and duration.
 
 - **Query Parameters:**
   - `limit` *(optional, int, default: 20)*
-- **Response (200 OK):** Array of exception cases with gross amount, error codes, and control gate reasons.
+  - `offset` *(optional, int, default: 0)*
+- **Response (200 OK):** Array of `ReconciliationRun` records.
 
-### `GET /api/control-center/exceptions/export`
+---
+
+## 5. Exceptions & Audit Export
+
+### `GET /api/exceptions`
+Returns prioritized high-exposure exceptions sorted by descending financial impact.
+
+- **Query Parameters:**
+  - `limit` *(optional, int, default: 50)*
+  - `offset` *(optional, int, default: 0)*
+  - `source` *(optional, string)*: Filter by source.
+  - `min_impact` *(optional, int)*: Minimum exposure filter in paise.
+- **Response (200 OK):** Paginated exceptions list with reasons and amounts.
+
+### `GET /api/exceptions/export`
 Exports unresolved exceptions in RFC 4180 compliant CSV format for ERP ingestion.
 
+- **Query Parameters:**
+  - `source` *(optional, string)*
 - **Response (200 OK):** `Content-Type: text/csv` download with headers: `case_id,payment_id,amount_paise,amount_inr,status,error_reason,created_at`.
 
-### `GET /api/control-center/forecast`
+---
+
+## 6. Settlements & Cash Forecasting
+
+### `GET /api/settlements`
+Retrieves a paginated list of settlement batches and their waterfall breakdown.
+
+- **Query Parameters:**
+  - `limit` *(optional, int, default: 50)*
+  - `offset` *(optional, int, default: 0)*
+  - `source` *(optional, string)*
+- **Response (200 OK):** Paginated settlement batch list.
+
+### `GET /api/settlements/{settlement_id}`
+Returns details for a specific settlement batch and associated payment references.
+
+### `GET /api/forecast`
 Returns a 7-day rolling cash flow forecast distinguishing confirmed cash from pending settlements.
 
 - **Response (200 OK):**
@@ -234,36 +336,26 @@ Returns a 7-day rolling cash flow forecast distinguishing confirmed cash from pe
 }
 ```
 
-### `GET /api/control-center/audit-trail`
-Chronological immutable audit log of all system and user actions.
-
-- **Query Parameters:**
-  - `limit` *(optional, int, default: 100)*
-- **Response (200 OK):** Array of audit events.
-
 ---
 
-## 4. AI Investigation & Copilot
+## 7. AI Grounded Copilot & Policies
 
-### `POST /api/investigate`
-Triggers an on-demand Gemini 2.5 Flash semantic investigation for a specific payment ID.
+### `GET /api/policies`
+Returns indexed RAG policy documents, sections, and chunk counts.
 
-- **Request Body (JSON):**
-```json
-{
-  "payment_id": "PAY_4A269938"
-}
-```
 - **Response (200 OK):**
 ```json
 {
-  "payment_id": "PAY_4A269938",
-  "ai_recommendation": "MATCHED",
-  "ai_confidence": 0.94,
-  "summary": "Candidate SET_4A269938 matched based on timestamp and order reference.",
-  "control_gate_verdict": "BLOCK",
-  "control_gate_reasons": ["Multiple candidate settlements found in T+2 window."],
-  "final_status": "REVIEW"
+  "policies_loaded": 6,
+  "total_chunks": 42,
+  "documents": [
+    "arivo_control_policy.md",
+    "reconciliation_policy.md",
+    "fee_policy.md",
+    "refund_policy.md",
+    "settlement_policy.md",
+    "chargeback_policy.md"
+  ]
 }
 ```
 
@@ -273,65 +365,50 @@ Natural language financial controller copilot querying ledger records with groun
 - **Request Body (JSON):**
 ```json
 {
-  "query": "Why was payment PAY_FLAGSHIP_001 held in review?"
+  "question": "Why was payment PAY_FLAGSHIP_001 held in review?"
 }
 ```
 - **Response (200 OK):**
 ```json
 {
-  "query": "Why was payment PAY_FLAGSHIP_001 held in review?",
-  "answer": "Payment PAY_FLAGSHIP_001 (₹6,00,000.00) was held in REVIEW because Invariant 2 detected multiple candidate settlements (SET_FLAGSHIP_001A and SET_FLAGSHIP_001B) and Invariant 3 prohibited autonomous matching of amounts exceeding the ₹50,000 threshold.",
+  "answer": "Payment PAY_FLAGSHIP_001 (₹6,00,000.00) was held in REVIEW because Invariant 2 detected multiple candidate settlements and Invariant 3 prohibited autonomous matching of amounts exceeding the ₹50,000 threshold.",
+  "confidence": 0.95,
   "citations": [
-    {"source": "CASE_PAY_FLAGSHIP_001", "type": "reconciliation_case"},
-    {"source": "INV-002", "type": "control_policy"},
-    {"source": "INV-003", "type": "control_policy"}
-  ]
+    "CASE_PAY_FLAGSHIP_001: High-value transaction (Rs. 6,00,000 >= Rs. 50,000 threshold) with candidate ambiguity.",
+    "Policy: arivo_control_policy.md § Section 3 (Control Gate Invariants)"
+  ],
+  "sources": ["database", "rag_policy"]
 }
 ```
 
 ---
 
-## 5. Controlled Benchmark
+## 8. Benchmark & Ablation
 
 ### `GET /api/benchmark`
-Executes the empirical 3-tier benchmark across 5,114 ground-truth records.
+Executes or retrieves the empirical 4-tier benchmark ablation across 5,114 ground-truth records.
 
+- **Query Parameters:**
+  - `live_gemini` *(optional, bool, default: false)*: Run live Gemini API validation on sample cases.
+  - `sample_size` *(optional, int, default: 10)*: Sample size for live Gemini calls.
 - **Response (200 OK):**
 ```json
 {
   "dataset_size": 5114,
-  "throughput_records_per_second": 1352.6,
-  "execution_time_seconds": 3.78,
-  "metrics": {
-    "baseline": {
-      "matched_cases": 4732,
-      "false_auto_matches": 1180,
-      "precision": 0.7506,
-      "recall": 1.0000,
-      "f1_score": 0.8575,
-      "false_match_exposure_paise": 1155702300
-    },
-    "arivo_full": {
-      "matched_cases": 3124,
-      "false_auto_matches": 0,
-      "precision": 1.0000,
-      "recall": 0.9199,
-      "f1_score": 0.9583,
-      "false_match_exposure_paise": 0
-    }
-  },
-  "ai_value_and_safety": {
-    "ambiguous_investigated": 1849,
-    "unsafe_ai_matches_blocked": 1071,
-    "financial_exposure_prevented_paise": 1155702300,
-    "false_matches_eliminated": 1180
+  "throughput_records_per_second": 832.4,
+  "execution_time_seconds": 6.14,
+  "ablation_matrix": {
+    "tier_1_naive": {"precision": 0.7506, "recall": 1.0000, "false_auto_matches": 1180},
+    "tier_2_strict": {"precision": 0.7543, "recall": 0.9240, "false_auto_matches": 1022},
+    "tier_3_arivo_core": {"precision": 1.0000, "recall": 0.9199, "false_auto_matches": 0},
+    "tier_4_arivo_full": {"precision": 1.0000, "recall": 0.9199, "false_auto_matches": 0}
   },
   "flagship_safety_demo": {
     "record_id": "PAY_FLAGSHIP_001",
     "amount_inr": "Rs. 6,00,000.00",
     "gemini_recommendation": "MATCHED",
     "gemini_confidence": 0.97,
-    "control_gate_action": "BLOCK",
+    "control_gate_verdict": "BLOCK",
     "final_arivo_decision": "REVIEW",
     "principle": "The AI is confident. The system is not."
   }
@@ -340,39 +417,12 @@ Executes the empirical 3-tier benchmark across 5,114 ground-truth records.
 
 ---
 
-## 6. Razorpay Payment Gateway Integration
+## 9. Webhooks
 
-### `GET /api/razorpay/sync/status`
-Returns synchronization status, connection health, and last-known-good snapshot metadata.
-
-### `POST /api/razorpay/sync`
-Performs an incremental pull of payments and settlements from Razorpay.
-
-### `POST /api/razorpay/sync/backfill`
-Pulls historical records for a specified date range.
-
-- **Request Body (JSON):**
-```json
-{
-  "from_date": "2026-08-01T00:00:00Z",
-  "to_date": "2026-08-31T23:59:59Z"
-}
-```
-
-### `GET /api/razorpay/settlement-recon`
-Gateway-specific settlement batch reconciliation report.
-
-### `POST /api/razorpay/webhook`
-Receives live asynchronous webhook notifications from Razorpay (`payment.captured`, `settlement.processed`).
+### `POST /api/webhooks/razorpay`
+Asynchronous webhook listener for real-time payment gateway lifecycle events (`payment.captured`, `settlement.processed`).
 
 - **Headers:** `X-Razorpay-Signature` (HMAC-SHA256)
-- **Response (200 OK):** `{"status": "processed", "event_id": "evt_..."}`
+- **Response (200 OK):** `{"status": "ok", "event": "payment.captured"}`
+- **Security:** Validates signature using `RAZORPAY_WEBHOOK_SECRET` via `hmac.compare_digest()`.
 
----
-
-## 7. System Administration
-
-### `POST /api/reset-demo`
-Restores the database to its pristine ground-truth demonstration state. Used for hackathon judging walkthroughs.
-
-- **Response (200 OK):** `{"status": "reset_complete", "records_indexed": 5114}`

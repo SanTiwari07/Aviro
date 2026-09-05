@@ -16,7 +16,7 @@ docs/
 ├── api/              # REST reference (20 endpoints), Razorpay integration, webhooks
 ├── ai/               # Gemini 2.5 Flash investigator, XGBoost ML ranking, RAG pipeline
 ├── operations/       # Setup, development workflow, deployment, environment, runbooks
-├── quality/          # Test suite (118 tests), benchmark (5,114 txns), postmortems, changelog
+├── quality/          # Test suite (135 tests), benchmark (5,114 txns), postmortems, changelog
 ├── security/         # Security policy, credential management, authentication
 ├── policies/         # Authoritative financial control policies and invariants
 └── images/           # Verified real UI screenshots
@@ -43,7 +43,7 @@ Specifications and guides for REST endpoints and external provider interfaces:
 
 - [**REST API Reference**](api/REFERENCE.md)  Complete contract specification for all 20 FastAPI endpoints in `backend/main.py`.
 - [**Razorpay Integration Guide**](api/RAZORPAY_INTEGRATION.md)  Server-side API client, pagination, exponential backoff, and snapshot management.
-- [**Webhooks Reference**](api/WEBHOOKS.md)  Asynchronous webhook listener (`/api/razorpay/webhook`), HMAC-SHA256 signature verification, and idempotency.
+- [**Webhooks Reference**](api/WEBHOOKS.md)  Asynchronous webhook listener (`/api/webhooks/razorpay`), HMAC-SHA256 signature verification, and idempotency.
 
 ---
 
@@ -75,7 +75,7 @@ Operational procedures for developers, operators, and evaluators:
 
 Verification methodologies and historical logs:
 
-- [**Testing Strategy**](quality/TESTING.md)  Full breakdown of the 118 automated tests across 15 test suites in `backend/tests/`.
+- [**Testing Strategy**](quality/TESTING.md)  Full breakdown of the 135 automated tests across 16 test suites in `backend/tests/`.
 - [**Controlled Synthetic Benchmark**](quality/BENCHMARK.md)  Empirical accuracy and exposure metrics against 5,114 ground-truth records.
 - [**Failure Modes & Postmortems**](quality/POSTMORTEM.md)  Analysis of real financial reconciliation failures and how ARIVO mitigates them.
 - [**Changelog & History**](quality/CHANGELOG.md)  Chronological history of major releases and enhancements.

@@ -1,8 +1,8 @@
 # ARIVO Webhooks Reference
 
-> **Endpoint:** `POST /api/razorpay/webhook`  
+> **Endpoint:** `POST /api/webhooks/razorpay`  
 > **Signature Header:** `X-Razorpay-Signature` (HMAC-SHA256)  
-> **Implementation:** `backend/main.py:983` (`razorpay_webhook`)
+> **Implementation:** `backend/main.py:1100` (`razorpay_webhook`)
 
 ARIVO implements an asynchronous webhook listener designed to receive real-time lifecycle event notifications directly from Razorpay.
 

@@ -1,39 +1,40 @@
 # Testing Strategy & Quality Assurance Guide
 
-> **Total Tests:** 118 passing  
+> **Total Tests:** 135 passing  
 > **Test Framework:** Pytest 9.1.1  
 > **Directory:** `backend/tests/`  
-> **Execution Status:** 100% Pass (`118 passed in ~18s`)
+> **Execution Status:** 100% Pass (`135 passed in ~250s` full, fast suite in `~15s`)
 
 ARIVO enforces rigorous automated testing covering mathematical invariants, matching logic, API contracts, AI boundaries, database constraints, and gateway webhooks.
 
 ---
 
-## 1. Test Suite Directory Structure (15 Suites)
+## 1. Test Suite Directory Structure (16 Suites, 135 Tests)
 
 | Test Suite | Tests | Scope & Assertions |
 |---|:---:|---|
 | `test_adversarial.py` | 3 | High-value candidate collisions, gateway fee shifts, and weekend timestamp drift. |
-| `test_ai_controller_boundaries.py` | 5 | Invariant enforcement: proves AI cannot move capital, mutate ledgers, or bypass Control Gate. |
-| `test_api_endpoints.py` | 13 | FastAPI REST contract verification, response schemas, 404/400 validation, pagination. |
 | `test_api_idempotency_and_boundaries.py` | 4 | Proves idempotent re-execution of reconciliation runs produces identical DB state. |
-| `test_candidate_generator.py` | 4 | Temporal windowing ($T+0 \dots T+3$), currency filtering, and candidate pruning. |
-| `test_control_gate.py` | 11 | Complete verification of all 7 invariants (`INV-001` through `INV-007`) under PASS and BLOCK conditions. |
-| `test_currency_invariants.py` | 3 | Integer minor-unit paise calculations, non-INR currency rejection, floating-point guardrails. |
-| `test_database.py` | 5 | Relational models, foreign key cascading, unique constraints, and dynamic SQLite migrations. |
+| `test_benchmark_integrity.py` | 1 | Mathematical validation of benchmark results and zero false auto-match guarantees. |
+| `test_cash_forecast.py` | 7 | 7-day cash outlook based on Indian banking T+2 settlement lag models and invariant health. |
+| `test_dashboard_and_razorpay_flow.py` | 5 | Dashboard metrics calculation, sync status, and end-to-end Razorpay ingestion pipeline. |
 | `test_full_qa_pipeline.py` | 23 | Comprehensive end-to-end integration and lifecycle testing from ingestion to resolution. |
-| `test_gemini_investigator.py` | 5 | System prompt generation, JSON schema validation, timeout handling, and deterministic fallback. |
-| `test_ml_model.py` | 7 | Feature engineering vectors, XGBoost inference scoring, and cold-start heuristic fallback. |
-| `test_rag_pipeline.py` | 6 | Policy markdown chunking, TF-IDF / BM25 index retrieval, and prompt injection. |
-| `test_razorpay_integration.py` | 11 | Gateway client pagination, exponential backoff, rate limiting, and normalizer. |
-| `test_reconciliation_engine.py` | 12 | Matching strategy precedence (`EXACT_ID`, `AMOUNT_TIMESTAMP`, `ML_FALLBACK`, `MULTIPLE`, `UNMATCHED`). |
-| `test_webhook_handler.py` | 6 | HMAC-SHA256 signature verification, tamper rejection, and event replay protection. |
+| `test_gemini_failure_modes.py` | 22 | Exhaustive verification of AI failure modes: network drops, rate limits, malformed JSON, and Control Gate vetoes. |
+| `test_grouped_reconciliation.py` | 4 | Grouped settlement and multi-order refund waterfall reconciliation. |
+| `test_live_api_http.py` | 13 | Live HTTP contract verification across all FastAPI REST endpoints. |
+| `test_ml_ranking.py` | 6 | Feature extraction, XGBoost inference scoring, calibrated margins, and heuristic fallback. |
+| `test_normalizer.py` | 5 | Integer paise conversion, ISO 8601 UTC timestamp normalization, and waterfall balance checks. |
+| `test_production_hardening.py` | 13 | Boundary validation, non-INR currency rejection, floating-point guards, and DB concurrency. |
+| `test_rag_and_resolution.py` | 5 | RAG policy chunking, retrieval, grounded entity extraction, and case resolution workflows. |
+| `test_razorpay_client.py` | 6 | Gateway client authentication, pagination, socket timeouts, and error hierarchy. |
+| `test_reconciliation.py` | 5 | Deterministic matching strategies, duplicate prevention, and Control Gate decisions. |
+| `test_reconciliation_paths.py` | 7 | Edge-case path coverage for ambiguous candidates, fees, chargebacks, and partial refunds. |
 
 ---
 
 ## 2. Running Automated Tests
 
-### Full Suite Run
+### Full Suite Run (135 Tests)
 ```bash
 # Using pytest directly
 pytest backend/tests/ -v
@@ -45,15 +46,17 @@ pytest backend/tests/ -v
 make test
 ```
 
-### Invariant & Boundary Tests Only
+### Fast Test Suite Run (Unit & Hardening Tests)
 ```bash
-pytest backend/tests/test_control_gate.py backend/tests/test_ai_controller_boundaries.py -v
+# Via Makefile
+make test-fast
 ```
 
-### Frontend Typechecking & Build
+### Frontend Typechecking, Linting & Build
 ```bash
 cd frontend
 npm run typecheck
+npm run lint
 npm run build
 ```
 
@@ -69,3 +72,4 @@ Asserts:
 - Amounts are strictly positive integers in paise.
 - Currency is strictly `INR`.
 - Timestamps adhere to ISO 8601 UTC format.
+

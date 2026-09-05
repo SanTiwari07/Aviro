@@ -371,17 +371,13 @@ def train_and_evaluate(df: pd.DataFrame) -> Tuple[xgb.XGBClassifier, Dict[str, A
 def save_artifacts(model: xgb.XGBClassifier, metadata: Dict[str, Any], df: pd.DataFrame):
     """Persists model pickle, features.json, metadata.json, and training dataset CSV."""
     target_dir = os.path.join(PROJECT_ROOT, "arivo_ml_model")
-    model_sub_dir = os.path.join(target_dir, "model")
-    os.makedirs(model_sub_dir, exist_ok=True)
+    os.makedirs(target_dir, exist_ok=True)
 
-    # 1. Save pickle to both model/ and root arivo_ml_model/
-    p1 = os.path.join(model_sub_dir, "arivo_reconciliation_xgb.pkl")
-    p2 = os.path.join(target_dir, "arivo_reconciliation_xgb.pkl")
-    with open(p1, "wb") as f:
+    # 1. Save pickle to canonical arivo_ml_model/
+    model_path = os.path.join(target_dir, "arivo_reconciliation_xgb.pkl")
+    with open(model_path, "wb") as f:
         pickle.dump(model, f)
-    with open(p2, "wb") as f:
-        pickle.dump(model, f)
-    logger.info(f"Saved model pickle to {p1} and {p2}")
+    logger.info(f"Saved canonical model pickle to {model_path}")
 
     # 2. Save features.json
     feat_file = os.path.join(target_dir, "features.json")

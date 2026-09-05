@@ -1,11 +1,11 @@
-# Controlled Synthetic Benchmark & Evaluation Methodology
+# Controlled Synthetic Benchmark & Ablation Methodology
 
 > **Evaluation Harness:** `evaluation/benchmark.py`  
 > **Dataset Size:** 5,114 ground-truth records across 6 adversarial business scenarios  
 > **Random Seed:** `20260902` (Fully reproducible deterministic seed)  
-> **Measured Throughput:** 1,352.6 records/second
+> **Evaluation Modes:** Benchmark A (5,114 Offline Ablation) & Benchmark B (Live Gemini AI Empirical Validation)
 
-This document details the evaluation methodology, benchmark harness, and empirical results comparing a naive rule-based reconciliation baseline against ARIVO's invariant-governed controller.
+This document details the evaluation methodology, benchmark harness, and empirical results comparing naive baselines, strict rules, and ARIVO's hybrid ML + Gemini + Control Gate architecture.
 
 ---
 
@@ -22,54 +22,70 @@ The benchmark dataset consists of 5,114 ground-truth transactions generated acro
 
 ---
 
-## 2. Empirical Benchmark Results
+## 2. Benchmark A: 4-Tier Architectural Ablation Matrix
+
+Benchmark A evaluates all 5,114 ground-truth records to mathematically measure the contribution of each system layer:
 
 ```
-====================================================================================================
-                        CONTROLLED SYNTHETIC BENCHMARK RESULTS
-====================================================================================================
-Dataset Size:                       5,114 ground-truth transactions
-Throughput:                         1,352.6 records/second (Execution time: 3.78s)
-----------------------------------------------------------------------------------------------------
-METRIC                              NAIVE RULE BASELINE             ARIVO INVARIANT CONTROLLER
-----------------------------------------------------------------------------------------------------
-Matched Records                     4,732                           3,124
-False Auto-Matches                  1,180 records                   0 records (100% Protected)
-Precision                           75.06%                          100.00%
-Recall                              100.00%                         91.99%
-F1-Score                            0.8575                          0.9583
-Erroneous Capital Disbursed         Rs. 1,15,57,023.00              Rs. 0.00
-Financial Exposure Prevented        Rs. 0.00                        Rs. 1,15,57,023.00
-Unsafe AI Matches Blocked           N/A                             1,071
-Ambiguous Cases Investigated        N/A                             1,849
-====================================================================================================
+========================================================================================================
+             ARIVO 4-TIER ARCHITECTURAL ABLATION MATRIX (5,114 GROUND-TRUTH RECORDS)
+========================================================================================================
+METRIC                   Tier 1: Naive Rules   Tier 2: Strict Rules  Tier 3: ARIVO Core    Tier 4: ARIVO Full
+--------------------------------------------------------------------------------------------------------
+Architecture             Greedy (No Gate/ML)   Exact/Norm ID + Gate  Rules + ML + Gate     Rules+ML+AI+Gate
+Candidate Ranking        None                  None (First-come)     XGBoost Scorer        XGBoost + Gemini
+Control Gate Invariants  Disabled              Enforced              Enforced              Enforced
+Matched Records          4,732                 4,160                 3,124                 3,124
+False Auto-Matches       1,180 records         1,022 records         0 records (0.00%)     0 records (0.00%)
+Reconciliation Precision 75.06%                75.43%                100.00%               100.00%
+Reconciliation Recall    100.00%               92.40%                91.99%                91.99%
+F1-Score                 0.8575                0.8306                0.9583                0.9583
+Erroneous Capital Leak   ₹1,15,57,023.00       ₹98,95,469.00         ₹0.00                 ₹0.00
+False Exposure Prevented ₹0.00                 ₹16,61,554.00         ₹1,15,57,023.00       ₹1,15,57,023.00
+Evaluation Mechanism     Empirical Rule Run    Empirical Rule Run    Empirical ML Run      Simulated AI Oracle*
+========================================================================================================
+*Note: In Benchmark A, Tier 4 evaluates an offline Simulated LLM Policy Oracle for reproducible, zero-cost
+evaluation across the entire 5,114 dataset at 700+ records/sec.
 ```
 
 ---
 
-## 3. Analysis: The Precision-First Accounting Imperative
+## 3. Scientific Justification: Why the ML Component is Necessary
 
-### Why 100% Precision Matters
-In consumer web applications (e.g. search, recommendation), optimizing for high recall is common because false positives have low cost. In financial controllership, **a false auto-match is catastrophic**:
-- An erroneous auto-match writes off ledger balances, masks accounting theft or leakage, and misallocates working capital.
-- The naive baseline matched 4,732 records and achieved 100% recall, but produced **1,180 false auto-matches**, erroneously disbursing **₹1,15,57,023.00** ($1.15\text{ Crore}$).
-- ARIVO achieves **100.00% Precision**. It intentionally holds 1,849 ambiguous cases in `REVIEW`, completely eliminating false auto-matches and preventing over ₹1.15 Crore in accounting leakage.
+A central question in financial system architecture is whether deterministic rules alone suffice:
+1. **The Rule Boundary Limit:** In real digital commerce, payment references are frequently truncated, missing, or altered by intermediaries. When multiple transactions share identical amounts on identical dates, strict rules cannot discern which settlement belongs to which payment.
+2. **The Failure of Greedy Rules (Tier 1 & 2):** Without ML ranking, naive rules match the first available settlement, resulting in **1,022 false auto-matches** and **₹98,95,469.00 in erroneous capital leakage**.
+3. **The Role of XGBoost (Tier 3):** ARIVO trains a gradient-boosted decision tree on non-linear features: temporal difference, fee deviation probabilities, merchant transaction patterns, and string edit distance. The model outputs calibrated match probabilities and score margins between candidate 1 and candidate 2.
+4. **The Gate Integration:** The deterministic Control Gate consumes these ML metrics: only when a candidate exhibits high confidence and a decisive margin over competing decoys is it eligible for automated clearance. This mathematical separation raises precision from **75.43% to 100.00%**, completely eliminating false auto-matches.
 
 ---
 
-## 4. Reproducing the Benchmark
+## 4. Benchmark B: Live Gemini AI Empirical Validation
 
-To execute the benchmark locally:
+For transparent live validation against Google Gemini 2.5 Flash endpoints, Benchmark B invokes the official Google GenAI SDK:
 
 ```bash
-# Run via Python CLI
-python evaluation/benchmark.py
-
-# Or via Windows venv
-.\venv\Scripts\python evaluation/benchmark.py
-
-# Or via REST API
-curl http://localhost:8000/api/benchmark
+# Execute Live Gemini Benchmark (default sample size: 10)
+python evaluation/benchmark.py --live-gemini --sample-size 10
 ```
 
-The script runs synchronously, verifies ground-truth accuracy, checks the flagship safety scenario (`PAY_FLAGSHIP_001`), and outputs the benchmark matrix.
+### Empirical Live Telemetry
+- **Model Endpoint:** `gemini-2.5-flash`
+- **Schema Conformance:** 100% structured JSON extraction (with markdown code fence stripping).
+- **Average Roundtrip Latency:** Measured empirically across live calls.
+- **Control Gate Supremacy Demonstration:** Evaluates the flagship adversarial case `PAY_FLAGSHIP_001` (₹6,00,000.00) live, demonstrating that even when Gemini produces a high-confidence recommendation, the Control Gate enforces Invariant 2 (Multiple Candidates) and Invariant 3 (High Value $\ge$ ₹50,000) to veto automated matching and lock the capital in `REVIEW`.
+
+---
+
+## 5. Reproducing the Benchmarks
+
+```bash
+# 1. Run Benchmark A (Full 5,114 Offline Ablation)
+python evaluation/benchmark.py
+
+# 2. Run Benchmark A + Benchmark B (Live Gemini AI Validation)
+python evaluation/benchmark.py --live-gemini --sample-size 10
+
+# 3. Via REST API
+curl "http://localhost:8000/api/benchmark?live_gemini=true&sample_size=10"
+```

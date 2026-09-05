@@ -28,11 +28,16 @@ frontend/
     ├── components/
     │   └── EvidenceDrawer.tsx  # Slide-over detail drawer for case audits
     └── pages/
-        ├── Overview.tsx     # Metrics dashboard & Run trigger
+        ├── Overview.tsx        # Metrics dashboard & Run trigger
         ├── Reconciliation.tsx  # Full audit table with status filtering
-        ├── Exceptions.tsx   # Critical exceptions view
-        ├── Settlements.tsx  # Settlement waterfall explanation
-        └── Ask.tsx          # Interactive Gemini chat copilot
+        ├── Exceptions.tsx      # Prioritized financial exceptions & CSV export
+        ├── Settlements.tsx     # Settlement waterfall & batch inspection
+        ├── ControlCenter.tsx   # Operational control center & invariant monitor
+        ├── CashPosition.tsx    # 7-day cash flow forecast timeline
+        ├── Ask.tsx             # Interactive grounded RAG chat copilot
+        ├── Runs.tsx            # Historical reconciliation execution ledger
+        ├── Benchmark.tsx       # 4-tier ablation & live AI safety benchmark
+        └── Audit.tsx           # System audit trail & case verification
 ```
 
 ---
