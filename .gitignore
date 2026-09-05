@@ -52,10 +52,10 @@ tmp/
 # SQLite & Runtime Database Files
 *.sqlite
 *.sqlite3
-*.db
-arivo.db*
-*.db-shm
-*.db-wal
+# *.db
+# arivo.db*
+# *.db-shm
+# *.db-wal
 
 # Operating System & Editor Metadata
 .DS_Store
