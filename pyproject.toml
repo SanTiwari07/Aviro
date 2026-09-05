@@ -1,7 +1,7 @@
 [project]
 name = "arivo"
 version = "0.1.0"
-description = "ARIVO — AI Finance Controller"
+description = "ARIVO - AI Finance Controller"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

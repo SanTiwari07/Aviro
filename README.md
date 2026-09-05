@@ -1,12 +1,12 @@
-# ARIVO — AI Finance Controller
+# ARIVO - AI Finance Controller
 
 <div align="center">
 
 ![ARIVO Logo](frontend/src/assets/arivo-logo.png)
 
-### Razorpay AI Buildathon 2026 — Track 04: AI Finance Controller
+### Razorpay AI Buildathon 2026 - Track 04: AI Finance Controller
 
-**"Know where every rupee went — or know exactly why you don't."**
+**"Know where every rupee went - or know exactly why you don't."**
 
 *AI investigates. Rules verify. Controls protect. Arivo decides. Humans resolve ambiguity.*
 
@@ -38,7 +38,7 @@ ARIVO is a production-minded, invariant-governed AI Finance Controller architect
 ### The Flagship AI Safety Scenario in Action
 *The Evidence Drawer displaying transaction `PAY_FLAGSHIP_001` (₹6,00,000.00). Gemini recommended `MATCHED` with 97% confidence. Arivo's Control Gate vetoed the match, holding the capital in `REVIEW` due to candidate collision and high monetary exposure:*
 
-![ARIVO Evidence Drawer — Flagship AI Safety Scenario](docs/images/arivo-flagship-drawer.png)
+![ARIVO Evidence Drawer - Flagship AI Safety Scenario](docs/images/arivo-flagship-drawer.png)
 
 ### The Financial Control Room
 *Real-time executive dashboard displaying live financial exposure, reconciled volume, pending controller review, and prioritized high-exposure exception queues:*
@@ -71,13 +71,13 @@ The central architectural thesis of ARIVO is that **AI confidence must never ove
 Transaction: PAY_FLAGSHIP_001 (₹6,00,000.00 / 60,000,000 paise)
 ├── 1. Investigation Engine:    Gemini 2.5 Flash analyzes order notes & metadata
 │                               Recommendation: MATCHED (Confidence: 97%)
-│                               [AI Suggestion Only — Non-authoritative]
+│                               [AI Suggestion Only - Non-authoritative]
 │
 ├── 2. Control Gate Safeguard:  EVALUATION: BLOCK
 │                               Violations:
 │                                 [!] Invariant 2: Multiple candidate settlements (SET_001A, SET_001B)
 │                                 [!] Invariant 3: High monetary exposure (₹6,00,000 >= ₹50,000 threshold)
-│                               [Deterministic Override — Absolute Veto]
+│                               [Deterministic Override - Absolute Veto]
 │
 └── 3. ARIVO Final Decision:    STATUS: REVIEW
                                 Action: Capital locked pending human-controller signoff.
@@ -384,4 +384,5 @@ For in-depth technical documentation, refer to:
 <div align="center">
 Built with precision for the <strong>Razorpay AI Buildathon 2026</strong>.
 </div>
+
 
