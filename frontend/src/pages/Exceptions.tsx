@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR, formatNumber } from '../api';
+import { api, formatINR, formatNumber, HIGH_VALUE_THRESHOLD_PAISE } from '../api';
 import {
   Download,
   RefreshCw,
-  ShieldAlert,
   ArrowRight,
-  ShieldCheck,
 } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
 import StatusBadge from '../components/StatusBadge';
@@ -51,7 +49,7 @@ export default function Exceptions({
     0
   );
   const highValueCount = cases.filter(
-    (c) => (c.financial_impact || 0) >= 5000000
+    (c) => (c.financial_impact || 0) >= HIGH_VALUE_THRESHOLD_PAISE
   ).length;
 
   return (
@@ -155,7 +153,7 @@ export default function Exceptions({
                 </tr>
               ) : (
                 cases.map((c) => {
-                  const isHighVal = (c.financial_impact || 0) >= 5000000;
+                  const isHighVal = (c.financial_impact || 0) >= HIGH_VALUE_THRESHOLD_PAISE;
                   const isFlagship = c.case_id === 'CASE_PAY_FLAGSHIP_001';
                   return (
                     <tr

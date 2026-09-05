@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from ... import database
 from .client import RazorpayClient
 from .normalizer import PaymentNormalizer, SettlementNormalizer
-from .errors import RazorpayError, RazorpayAuthError
+from .errors import RazorpayError
 
 logger = logging.getLogger("arivo.razorpay.sync")
 

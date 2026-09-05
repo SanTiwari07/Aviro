@@ -16,8 +16,13 @@ except ImportError:
     except ImportError:
         from ..ml.match_scorer import get_candidate_scorer
 
-# 5,000,000 paise = 50,000 INR
-HIGH_VALUE_THRESHOLD_PAISE = 5000000
+try:
+    from backend.engine.control_gate import HIGH_VALUE_THRESHOLD_PAISE
+except ImportError:
+    try:
+        from engine.control_gate import HIGH_VALUE_THRESHOLD_PAISE
+    except ImportError:
+        from .control_gate import HIGH_VALUE_THRESHOLD_PAISE
 
 
 def _normalize_ref(ref: Optional[str]) -> str:

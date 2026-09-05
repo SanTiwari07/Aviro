@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR, formatNumber, formatPercent } from '../api';
+import { api, formatINR, formatPercent } from '../api';
 import {
-  Scale,
   ShieldAlert,
-  ShieldCheck,
   CheckCircle2,
-  AlertTriangle,
   ArrowRight,
-  TrendingUp,
-  Cpu,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
-import StatusBadge from '../components/StatusBadge';
 
 interface BenchmarkProps {
   onOpenCase: (caseId: string) => void;
@@ -35,7 +29,7 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
   }, []);
 
   const b = data?.metrics?.baseline;
-  const a = data?.metrics?.arivo;
+  const a = data?.metrics?.arivo_full || data?.metrics?.arivo_core || data?.metrics?.arivo;
   const ai = data?.ai_value_and_safety;
   const demo = data?.flagship_safety_demo;
 
@@ -79,7 +73,7 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                 </span>
               </div>
               <span className="text-xs font-mono text-content-muted">
-                Entity: <strong className="text-content-primary font-bold">{demo?.record_id || 'PAY_FLAGSHIP_001'}</strong> • Amount: <strong className="text-[#D98A26] dark:text-[#FFB454] font-bold">{demo?.amount_inr || '₹2,49,999.00'}</strong>
+                Entity: <strong className="text-content-primary font-bold">{demo?.record_id || 'PAY_FLAGSHIP_001'}</strong> • Amount: <strong className="text-[#D98A26] dark:text-[#FFB454] font-bold">{demo?.amount_inr || 'Rs. 6,00,000.00'}</strong>
               </span>
             </div>
 
@@ -90,8 +84,8 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                 </h3>
               </div>
               <p className="text-xs text-content-secondary leading-relaxed max-w-3xl">
-                A high-value ₹2,49,999.00 transaction encountered two identical date and amount settlement candidates.
-                The Investigation Engine recommended <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">MATCH with 97% confidence</span> based on narrative context.
+                A high-value {demo?.amount_inr || 'Rs. 6,00,000.00'} transaction encountered two identical date and amount settlement candidates.
+                The Investigation Engine recommended <span className="text-[#7462F5] dark:text-[#A79CFF] font-bold">MATCH with {demo?.gemini_confidence ? Math.round(demo.gemini_confidence * 100) : 97}% confidence</span> based on narrative context.
                 However, Arivo's Control Gate vetoed the match, holding the transaction in <span className="text-[#D98A26] dark:text-[#FFB454] font-bold">REVIEW</span> because Invariant 6 strictly forbids automated finalization on ambiguous high-value disbursements.
               </p>
             </div>
@@ -105,7 +99,7 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <span>1. Investigation Engine</span>
                 </div>
                 <div className="font-mono font-bold text-[#7462F5] dark:text-[#A79CFF] text-sm">
-                  {demo?.gemini_decision || 'MATCH (97% Conf)'}
+                  {demo?.gemini_recommendation ? `${demo.gemini_recommendation} (${Math.round((demo.gemini_confidence ?? 0.97) * 100)}% Conf)` : (demo?.gemini_decision || 'MATCH (97% Conf)')}
                 </div>
                 <span className="text-[10px] text-content-muted block">AI Suggestion Only</span>
               </div>
@@ -117,7 +111,7 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <span>2. Control Gate</span>
                 </div>
                 <div className="font-mono font-bold text-[#E03A53] dark:text-[#FF647C] text-sm">
-                  {demo?.control_gate_verdict || 'BLOCK (Invariant 6)'}
+                  {demo?.control_gate_action || demo?.control_gate_verdict || 'BLOCK (Invariant 6)'}
                 </div>
                 <span className="text-[10px] text-content-muted block">Deterministic Override</span>
               </div>
@@ -129,7 +123,7 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <span>3. Final Decision</span>
                 </div>
                 <div className="font-mono font-bold text-[#D98A26] dark:text-[#FFB454] text-sm">
-                  {demo?.arivo_final_status || 'REVIEW REQUIRED'}
+                  {demo?.final_arivo_decision || demo?.arivo_final_status || 'REVIEW REQUIRED'}
                 </div>
                 <span className="text-[10px] text-content-muted block">Human Controller Verification</span>
               </div>
@@ -177,31 +171,31 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <div className="flex justify-between">
                     <span className="text-content-muted">False Auto-Matches:</span>
                     <span className="text-[#E03A53] dark:text-[#FF647C] font-bold tabular-nums">
-                      {b?.false_matches_count || 47} records
+                      {b?.false_auto_matches ?? b?.false_matches_count ?? 1180} records
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">Precision:</span>
                     <span className="text-content-secondary tabular-nums">
-                      {formatPercent(b?.precision || 0.988)}
+                      {formatPercent(b?.precision || 0.7506)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">Recall:</span>
                     <span className="text-content-secondary tabular-nums">
-                      {formatPercent(b?.recall || 0.974)}
+                      {formatPercent(b?.recall || 1.0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">F1-Score:</span>
                     <span className="text-content-secondary tabular-nums">
-                      {formatPercent(b?.f1_score || 0.981)}
+                      {formatPercent(b?.f1_score || 0.8575)}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-border">
                     <span className="text-content-muted">Erroneous Capital Disbursed:</span>
                     <span className="text-[#E03A53] dark:text-[#FF647C] font-bold tabular-nums">
-                      {formatINR(b?.erroneous_capital_disbursed || 11750000)}
+                      {formatINR(b?.false_match_exposure_paise ?? b?.erroneous_capital_disbursed ?? 1155702300)}
                     </span>
                   </div>
                 </div>
@@ -224,31 +218,31 @@ export default function Benchmark({ onOpenCase }: BenchmarkProps) {
                   <div className="flex justify-between">
                     <span className="text-content-muted">False Auto-Matches:</span>
                     <span className="text-status-mint font-bold tabular-nums text-sm">
-                      0 records (100% Protected)
+                      {a?.false_auto_matches ?? 0} records (100% Protected)
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">Precision:</span>
                     <span className="text-status-mint font-bold tabular-nums">
-                      {formatPercent(a?.precision || 1.0)}
+                      {formatPercent(a?.precision ?? 1.0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">Recall:</span>
                     <span className="text-content-primary font-semibold tabular-nums">
-                      {formatPercent(a?.recall || 0.996)}
+                      {formatPercent(a?.recall ?? 0.9199)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-content-muted">F1-Score:</span>
                     <span className="text-content-primary font-semibold tabular-nums">
-                      {formatPercent(a?.f1_score || 0.998)}
+                      {formatPercent(a?.f1_score ?? 0.9583)}
                     </span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-border">
                     <span className="text-content-muted">Capital Protected from Error:</span>
                     <span className="text-status-mint font-bold tabular-nums text-sm">
-                      {formatINR(ai?.exposure_protected_paise || 14285000)}
+                      {formatINR(ai?.financial_exposure_prevented_paise ?? ai?.exposure_protected_paise ?? 1155702300)}
                     </span>
                   </div>
                 </div>

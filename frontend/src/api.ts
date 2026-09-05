@@ -5,6 +5,9 @@
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
+// Authoritative high-value threshold: ₹50,000.00 in minor integer units (paise)
+export const HIGH_VALUE_THRESHOLD_PAISE = 5000000;
+
 export async function apiFetch<T = any>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {

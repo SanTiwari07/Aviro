@@ -19,8 +19,9 @@ from google.genai import types
 
 from .. import database
 
+from ..engine.control_gate import HIGH_VALUE_THRESHOLD_PAISE
+
 logger = logging.getLogger("arivo.ai")
-HIGH_VALUE_THRESHOLD_PAISE = 5000000
 
 
 def _get_client() -> genai.Client:
@@ -176,6 +177,10 @@ def investigate_case(evidence: Dict[str, Any]) -> Dict[str, Any]:
       "confidence": 0.0
     }}
     """
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key or api_key in ("your_gemini_api_key_here", "dummy", "test_key", "none"):
+        return fallback
 
     try:
         client = _get_client()
@@ -364,8 +369,8 @@ def ask_arivo_grounded(question: str, db: Session) -> Dict[str, Any]:
             answer_text = "Here are the verified records from the Arivo controller:\n\n" + "\n\n".join(db_context_facts)
         else:
             answer_text = (
-                f"According to ARIVO policy, all financial matches require zero amount delta and exact unique identification. "
-                f"Ambiguous or high-value transactions (>₹50,000) are routed to manual REVIEW, and discrepancies are marked as EXCEPTION."
+                "According to ARIVO policy, all financial matches require zero amount delta and exact unique identification. "
+                "Ambiguous or high-value transactions (>₹50,000) are routed to manual REVIEW, and discrepancies are marked as EXCEPTION."
             )
 
     return {

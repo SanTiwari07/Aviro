@@ -3,15 +3,10 @@ import { api, formatDate, formatNumber } from '../api';
 import {
   History,
   RefreshCw,
-  CheckCircle2,
   Clock,
-  Cpu,
-  Layers,
-  ArrowRight,
   Zap,
 } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
-import StatusBadge from '../components/StatusBadge';
 
 interface RunRecord {
   id: number;

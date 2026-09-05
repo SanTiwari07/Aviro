@@ -1,5 +1,4 @@
 import pytest
-import os
 import urllib.error
 from unittest.mock import patch, MagicMock
 
@@ -8,7 +7,6 @@ from backend.integrations.razorpay.errors import (
     RazorpayAuthError,
     RazorpayRateLimitError,
     RazorpayTimeoutError,
-    RazorpayAPIError,
 )
 
 

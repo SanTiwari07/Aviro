@@ -7,8 +7,6 @@ import {
   AlertCircle,
   Loader2,
   X,
-  ShieldCheck,
-  Sparkles,
 } from 'lucide-react';
 
 interface ReconciliationModalProps {

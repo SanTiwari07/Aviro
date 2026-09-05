@@ -1,17 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR, formatNumber } from '../api';
+import { api } from '../api';
 import {
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
   BookOpen,
-  FileCode,
-  Layers,
-  Database,
-  Cpu,
   RefreshCw,
-  ChevronRight,
-  ExternalLink,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 

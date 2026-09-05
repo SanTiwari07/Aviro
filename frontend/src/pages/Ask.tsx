@@ -1,23 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { api, AskResponse, PolicyExcerpt } from '../api';
 import {
-  Terminal,
   Send,
   Loader2,
   BookOpen,
-  FileSpreadsheet,
   CheckCircle2,
-  AlertTriangle,
   ArrowRight,
   ShieldCheck,
   ChevronDown,
   ChevronUp,
   Cpu,
-  Layers,
   Sparkles,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import StatusBadge from '../components/StatusBadge';
 
 interface AskProps {
   onOpenCase: (caseId: string) => void;

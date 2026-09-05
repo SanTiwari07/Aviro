@@ -30,7 +30,6 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
     log_loss,
-    confusion_matrix,
 )
 import xgboost as xgb
 
@@ -42,7 +41,6 @@ if PROJECT_ROOT not in sys.path:
 from backend.ml.features import (
     FEATURE_NAMES,
     extract_candidate_features,
-    candidate_features_to_vector,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

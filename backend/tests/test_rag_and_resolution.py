@@ -2,11 +2,9 @@
 Tests for RAG Engine, Policy Knowledge Base, and Human Controller Resolution.
 """
 
-import os
-import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
-from backend.ai.rag import policy_retriever, query_rag, execute_controlled_query
+from backend.ai.rag import policy_retriever
 from backend import database
 
 client = TestClient(app)

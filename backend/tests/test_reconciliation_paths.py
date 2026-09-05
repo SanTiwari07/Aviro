@@ -4,9 +4,8 @@ including exact ID, normalized ID, amount mismatch, high-value boundaries,
 waterfall anomalies, and duplicate claim detection.
 """
 
-import pytest
-from backend.engine.reconciliation import run_reconciliation, compute_settlement_waterfall, _normalize_ref
-from backend.engine.control_gate import validate_match, decide_final_status
+from backend.engine.reconciliation import run_reconciliation, compute_settlement_waterfall
+from backend.engine.control_gate import validate_match, decide_final_status, HIGH_VALUE_THRESHOLD_PAISE
 
 
 def test_exact_match_clean_waterfall():
@@ -90,7 +89,7 @@ def test_amount_mismatch_forces_control_block():
 
 
 def test_high_value_boundaries():
-    threshold = 5000000
+    threshold = HIGH_VALUE_THRESHOLD_PAISE
     p_below = {"payment_id": "PAY_BELOW", "amount": threshold - 1, "currency": "INR"}
     p_at = {"payment_id": "PAY_AT", "amount": threshold, "currency": "INR"}
     p_above = {"payment_id": "PAY_ABOVE", "amount": threshold + 1, "currency": "INR"}

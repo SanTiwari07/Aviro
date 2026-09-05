@@ -1,8 +1,7 @@
-import json
 import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
-from backend.database import SessionLocal, ReconciliationCase, Payment, Settlement
+from backend.database import SessionLocal, ReconciliationCase, Settlement
 
 @pytest.fixture(scope="module")
 def client():

@@ -5,9 +5,6 @@ import {
   RefreshCw,
   Cpu,
   ArrowRight,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 

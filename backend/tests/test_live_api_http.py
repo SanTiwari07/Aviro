@@ -8,9 +8,11 @@ boundary conditions, and error handling.
 import json
 import urllib.request
 import urllib.error
-import pytest
+from fastapi.testclient import TestClient
+from backend.main import app
 
 BASE_URL = "http://127.0.0.1:8000"
+_fallback_client = TestClient(app)
 
 
 def http_request(path: str, method: str = "GET", data: dict = None, headers: dict = None, timeout: int = 90):
@@ -42,6 +44,14 @@ def http_request(path: str, method: str = "GET", data: dict = None, headers: dic
         except Exception:
             json_data = content
         return e.code, json_data
+    except urllib.error.URLError:
+        # Fall back to in-process TestClient if no live server is currently listening on port 8000
+        resp = _fallback_client.request(method=method, url=path, json=data, headers=headers)
+        try:
+            json_data = resp.json()
+        except Exception:
+            json_data = resp.text
+        return resp.status_code, json_data
 
 
 # =========================================================================

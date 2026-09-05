@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR, formatDate, formatNumber } from '../api';
+import { api, formatINR, formatDate } from '../api';
 import {
-  Layers,
   RefreshCw,
-  AlertOctagon,
-  CheckCircle2,
-  Landmark,
   ArrowRight,
   X,
   FileText,
   Calculator,
-  Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import MetricCard from '../components/MetricCard';

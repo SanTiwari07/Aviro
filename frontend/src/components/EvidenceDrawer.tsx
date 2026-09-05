@@ -3,17 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { api, formatINR, formatDate, CaseDetail } from '../api';
 import {
   X,
-  ShieldAlert,
-  ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Cpu,
   FileText,
   UserCheck,
   Sparkles,
-  ExternalLink,
-  MessageSquare,
   AlertOctagon,
   CornerDownRight,
   Loader2,

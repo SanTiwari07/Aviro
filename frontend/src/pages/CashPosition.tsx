@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { api, formatINR, formatDate, formatPercent } from '../api';
+import { api, formatINR } from '../api';
 import {
   TrendingUp,
   Landmark,
   Clock,
   ShieldAlert,
-  Calendar,
-  CheckCircle2,
   RefreshCw,
   Info,
 } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
-import StatusBadge from '../components/StatusBadge';
 
 export default function CashPosition() {
   const [data, setData] = useState<any>(null);

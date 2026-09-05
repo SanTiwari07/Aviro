@@ -4,7 +4,6 @@ Shared single-source-of-truth across training, evaluation, and production infere
 Enforces zero label leakage: candidate_count is uniform across all candidates of a payment.
 """
 
-import math
 import difflib
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Union

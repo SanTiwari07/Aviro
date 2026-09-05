@@ -28,6 +28,8 @@ htmlcov/
 *.temp
 *.sqlite
 *.sqlite3
+*.db
+arivo.db
 
 .DS_Store
 .idea/

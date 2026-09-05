@@ -4,7 +4,7 @@ Validates all 22 edge cases, format errors, hallucination attempts, and fallback
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from backend.ai.gemini import (
     validate_gemini_case_response,
     parse_gemini_response_safe,

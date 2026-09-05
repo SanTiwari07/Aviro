@@ -14,7 +14,7 @@ import pickle
 import logging
 from typing import Dict, Any, List, Optional, Tuple, Union
 
-from .features import FEATURE_NAMES, extract_candidate_features, candidate_features_to_vector
+from .features import extract_candidate_features, candidate_features_to_vector
 
 logger = logging.getLogger("arivo.ml.scorer")
 

@@ -5,6 +5,9 @@ AI investigates ambiguity, but Control Gate retains absolute veto authority.
 
 from typing import Dict, Any, List
 
+# Single authoritative high-value threshold: ₹50,000.00 = 5,000,000 paise (integer minor units)
+HIGH_VALUE_THRESHOLD_PAISE: int = 5000000
+
 
 def validate_match(candidate: Dict[str, Any]) -> Dict[str, Any]:
     """

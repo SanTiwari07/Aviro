@@ -13,9 +13,10 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, or_
+from sqlalchemy import func, desc
 
 from .. import database
+from ..engine.control_gate import HIGH_VALUE_THRESHOLD_PAISE
 
 logger = logging.getLogger("arivo.rag")
 
@@ -233,7 +234,7 @@ def execute_controlled_query(query_text: str, db: Session) -> Dict[str, Any]:
 
         high_val_exposure = db.query(func.sum(database.ReconciliationCase.financial_impact)).filter(
             database.ReconciliationCase.status.in_(["REVIEW", "EXCEPTION"]),
-            database.ReconciliationCase.financial_impact >= 5000000
+            database.ReconciliationCase.financial_impact >= HIGH_VALUE_THRESHOLD_PAISE
         ).scalar() or 0
 
         records = [
@@ -397,7 +398,7 @@ RETRIEVED POLICY PROVISIONS:
     answer_parts = []
 
     if records:
-        answer_parts.append(f"Based on your query, verified ledger records were located:\n")
+        answer_parts.append("Based on your query, verified ledger records were located:\n")
         for r in records[:3]:
             rtype = r.get("type", "record").title()
             rid = r.get("id")
@@ -409,7 +410,7 @@ RETRIEVED POLICY PROVISIONS:
         answer_parts.append(context_summary)
 
     if retrieved_policies:
-        answer_parts.append(f"\n\n**Applicable Policy Reference:**")
+        answer_parts.append("\n\n**Applicable Policy Reference:**")
         top_p = retrieved_policies[0]
         answer_parts.append(f"Under **{top_p['name']}** (v{top_p['version']}, Section: *{top_p['section']}*):\n> {top_p['excerpt'][:220]}...")
 

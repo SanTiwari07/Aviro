@@ -14,6 +14,7 @@ import urllib.parse
 from typing import Dict, Any, List, Optional, Tuple
 
 from .errors import (
+    RazorpayError,
     RazorpayAuthError,
     RazorpayRateLimitError,
     RazorpayTimeoutError,

@@ -5,14 +5,12 @@ honest Razorpay provenance, source namespacing, and Control Gate invariants.
 """
 
 import os
-import sys
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from backend.main import app
 from backend import database
-from backend.integrations.razorpay.sync import RazorpaySyncService
 
 
 @pytest.fixture(scope="module")

@@ -9,10 +9,6 @@ import {
   AlertOctagon,
   Activity,
   ArrowRight,
-  ShieldCheck,
-  Cpu,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import MetricCard from '../components/MetricCard';
 import StatusBadge from '../components/StatusBadge';

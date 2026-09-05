@@ -7,8 +7,6 @@ Comprehensive test suite for the ML Candidate Ranking module:
 - Population conservation and database schema compatibility
 """
 
-import os
-import pytest
 from backend.ml.features import FEATURE_NAMES, extract_candidate_features
 from backend.ml.match_scorer import CandidateScorer, get_candidate_scorer
 from backend.engine.reconciliation import run_reconciliation

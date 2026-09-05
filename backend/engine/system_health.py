@@ -9,8 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from .. import database
-
-HIGH_VALUE_THRESHOLD_PAISE = 5000000
+from .control_gate import HIGH_VALUE_THRESHOLD_PAISE
 
 
 def check_system_health(db: Session) -> Dict[str, Any]:

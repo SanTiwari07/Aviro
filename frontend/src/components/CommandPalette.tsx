@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, SlidersHorizontal, LayoutDashboard, FileSpreadsheet, AlertTriangle, Layers, TrendingUp, History, ShieldCheck, Terminal, Scale, Download, RefreshCw, Play, ArrowRight, CornerDownLeft } from 'lucide-react';
+import { Search, SlidersHorizontal, LayoutDashboard, FileSpreadsheet, AlertTriangle, Layers, TrendingUp, History, ShieldCheck, Terminal, Scale, RefreshCw, Play, CornerDownLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface CommandPaletteProps {

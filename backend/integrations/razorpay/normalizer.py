@@ -7,7 +7,7 @@ and full data provenance is tagged.
 
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple
 
 from .errors import RazorpayNormalizationError
 

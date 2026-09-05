@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Check,
   UploadCloud,
-  FileSpreadsheet,
   AlertCircle,
   ShieldCheck,
   CheckCircle2,

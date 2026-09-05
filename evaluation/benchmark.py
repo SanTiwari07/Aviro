@@ -14,18 +14,14 @@ Calculates:
 import os
 import sys
 import csv
-import json
 import time
 from pathlib import Path
-from collections import Counter
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-HIGH_VALUE_THRESHOLD_PAISE = 5000000
 
 
 def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "dataset/ground_truth") -> Dict[str, Any]:
@@ -126,8 +122,6 @@ def run_benchmark_evaluation(data_dir: str = "dataset/data", truth_dir: str = "d
 
     for case in core_cases:
         cand = dict(case.get("candidate", {}))
-        amt = case["amount"]
-        is_high_val = amt >= HIGH_VALUE_THRESHOLD_PAISE
         is_ambiguous = cand.get("conflicting_evidence") or cand.get("multiple_candidates")
 
         ai_recommendation = None

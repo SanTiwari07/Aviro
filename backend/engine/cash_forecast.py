@@ -140,6 +140,7 @@ def calculate_cash_forecast(db: Session) -> Dict[str, Any]:
 
     return {
         "confirmed_cash": matched_sum,
+        "total_settlements_net": total_settlements_net,
         "expected_settlements": pending_settlements_sum,
         "unresolved_exposure": unresolved_exposure,
         "unresolved_risk_buffer": unresolved_exposure,

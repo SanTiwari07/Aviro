@@ -3,7 +3,6 @@ Tests verifying the integrity, dynamic calculation, and mathematical
 rigor of the benchmark evaluation engine (evaluation/benchmark.py).
 """
 
-import pytest
 from evaluation.benchmark import run_benchmark_evaluation
 
 
