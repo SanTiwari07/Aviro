@@ -28,6 +28,3 @@ ignore = []
 testpaths = ["backend/tests"]
 python_files = ["test_*.py"]
 
-[tool.vercel]
-entrypoint = "backend.main:app"
-
