@@ -49,7 +49,7 @@ class RazorpayClient:
     def _get_auth_header(self) -> str:
         if not self.is_configured:
             raise RazorpayAuthError(
-                "Razorpay API credentials not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env."
+                "Razorpay API credentials not configured. Please set API credentials in .env."
             )
         auth_bytes = f"{self.key_id}:{self.key_secret}".encode("utf-8")
         return f"Basic {base64.b64encode(auth_bytes).decode('utf-8')}"
@@ -103,7 +103,7 @@ class RazorpayClient:
 
             if status_code == 401:
                 raise RazorpayAuthError(
-                    f"Authentication failed: {err_desc}. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+                    f"Authentication failed: {err_desc}. Check API credentials.",
                     status_code=401,
                     details=err_data,
                 )
@@ -152,7 +152,7 @@ class RazorpayClient:
         if not self.is_configured:
             return {
                 "connected": False,
-                "reason": "Credentials not configured in environment (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET).",
+                "reason": "Credentials not configured in environment.",
                 "key_id_present": bool(self.key_id),
             }
         try:

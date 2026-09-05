@@ -6,7 +6,7 @@ import uuid
 import hmac
 import hashlib
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -111,6 +111,36 @@ def health_check(db: Session = Depends(database.get_db)):
     }
 
 
+def sanitize_sensitive_data(obj: Any) -> Any:
+    """
+    Recursively strips or masks sensitive information from API responses:
+    - Removes keys containing 'SECRET', 'PASSWORD', or 'TOKEN' (case-insensitive).
+    - Redacts occurrences of 'RAZORPAY_KEY_SECRET' and sensitive environment secrets in string values.
+    """
+    sensitive_substrings = ["RAZORPAY_KEY_SECRET"]
+    env_secret = os.getenv("RAZORPAY_KEY_SECRET")
+    if env_secret and len(env_secret.strip()) >= 4:
+        sensitive_substrings.append(env_secret.strip())
+
+    def _mask_text(text: str) -> str:
+        for s in sensitive_substrings:
+            if s in text:
+                text = text.replace(s, "[REDACTED]")
+        return text
+
+    if isinstance(obj, dict):
+        return {
+            k: sanitize_sensitive_data(v)
+            for k, v in obj.items()
+            if not any(token in k.upper() for token in ("SECRET", "PASSWORD", "TOKEN"))
+        }
+    elif isinstance(obj, list):
+        return [sanitize_sensitive_data(item) for item in obj]
+    elif isinstance(obj, str):
+        return _mask_text(obj)
+    return obj
+
+
 @app.get("/api/razorpay/status")
 def razorpay_status(db: Session = Depends(database.get_db)):
     """
@@ -133,7 +163,7 @@ def razorpay_status(db: Session = Depends(database.get_db)):
 
     is_live_active = client.is_configured and conn_info.get("connected") and conn_info.get("items_found", 0) > 0
 
-    return {
+    response_data = {
         "source": "razorpay_test",
         "mode": "live" if is_live_active else "synthetic",
         "source_mode": "live" if is_live_active else "synthetic",
@@ -160,6 +190,8 @@ def razorpay_status(db: Session = Depends(database.get_db)):
             "settlements_count": last_good.settlements_fetched if last_good else 0,
         } if last_good else None,
     }
+
+    return sanitize_sensitive_data(response_data)
 
 
 @app.post("/api/razorpay/sync")

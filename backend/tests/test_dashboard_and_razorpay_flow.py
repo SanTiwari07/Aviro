@@ -120,11 +120,14 @@ def test_razorpay_test_store_sync_and_reconcile(client):
     assert d["unresolved_financial_exposure"] > 0
 
 
-def test_razorpay_status_endpoint(client):
+def test_razorpay_status_endpoint(client, monkeypatch):
     """
     Test 5: /api/razorpay/status returns data source availability, honest mode,
-    and never exposes secret key credentials in response body.
+    and never exposes secret key credentials or environment variable names in response body.
     """
+    # 1. Test with missing credentials (e.g. CI environment)
+    monkeypatch.delenv("RAZORPAY_KEY_ID", raising=False)
+    monkeypatch.delenv("RAZORPAY_KEY_SECRET", raising=False)
     res = client.get("/api/razorpay/status")
     assert res.status_code == 200
     data = res.json()
@@ -137,9 +140,18 @@ def test_razorpay_status_endpoint(client):
     assert data["payments"] > 0
     assert data["settlements"] > 0
 
-    # Ensure secret keys are not leaked
+    # Ensure secret keys and env var names are not leaked
     body_text = res.text
     assert "RAZORPAY_KEY_SECRET" not in body_text
+
+    # 2. Test with credentials configured
+    monkeypatch.setenv("RAZORPAY_KEY_ID", "rzp_test_mock123")
+    monkeypatch.setenv("RAZORPAY_KEY_SECRET", "super_secret_value_xyz")
+    res2 = client.get("/api/razorpay/status")
+    assert res2.status_code == 200
+    body2 = res2.text
+    assert "RAZORPAY_KEY_SECRET" not in body2
+    assert "super_secret_value_xyz" not in body2
 
 
 def test_workspace_source_filtering(client):

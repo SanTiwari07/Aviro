@@ -145,15 +145,7 @@ class RazorpaySyncService:
         if new_s:
             db.bulk_save_objects(new_s)
 
-        # Update existing records if already present
-        if existing_p_ids:
-            for p in p_dicts:
-                if p["payment_id"] in existing_p_ids:
-                    db.query(database.Payment).filter_by(payment_id=p["payment_id"]).update(p)
-        if existing_s_ids:
-            for s in s_dicts:
-                if s["settlement_id"] in existing_s_ids:
-                    db.query(database.Settlement).filter_by(settlement_id=s["settlement_id"]).update(s)
+        # If records already exist in the local dataset snapshot, new records are inserted above.
 
         completed_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -211,7 +203,7 @@ class RazorpaySyncService:
 
         if not self.client.is_configured:
             if mode == "live":
-                err_msg = "Razorpay API credentials not configured in environment. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env."
+                err_msg = "Razorpay API credentials not configured in environment. Please set API credentials in .env."
                 sync_rec = database.SyncRecord(
                     sync_id=sync_id,
                     source="razorpay_test",
