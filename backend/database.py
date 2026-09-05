@@ -12,7 +12,17 @@ default_db_path = os.path.abspath(os.path.join(project_root, "arivo.db"))
 
 raw_db_url = os.getenv("DATABASE_URL", "").strip()
 if not raw_db_url or raw_db_url in ("sqlite:///./arivo.db", "sqlite:///arivo.db"):
-    DATABASE_URL = f"sqlite:///{default_db_path}"
+    if os.getenv("VERCEL"):
+        import shutil
+        tmp_db_path = "/tmp/arivo.db"
+        if not os.path.exists(tmp_db_path) and os.path.exists(default_db_path):
+            try:
+                shutil.copy2(default_db_path, tmp_db_path)
+            except Exception:
+                pass
+        DATABASE_URL = f"sqlite:///{tmp_db_path}"
+    else:
+        DATABASE_URL = f"sqlite:///{default_db_path}"
 elif raw_db_url.startswith("sqlite:///"):
     path_part = raw_db_url.replace("sqlite:///", "")
     if not os.path.isabs(path_part):

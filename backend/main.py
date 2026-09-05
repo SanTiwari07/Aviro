@@ -6,7 +6,7 @@ import uuid
 import hmac
 import hashlib
 import logging
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -57,6 +57,7 @@ if is_production and "*" in cors_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"^https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1155,3 +1156,16 @@ async def razorpay_webhook(request: Request):
     event = data.get("event", "unknown")
     logger.info(f"[Webhook] Received verified Razorpay event: {event}")
     return {"status": "received", "event": event}
+
+
+@app.get("/")
+def root():
+    """Root operational status and navigation links."""
+    return {
+        "service": "ARIVO AI Finance Controller",
+        "status": "online",
+        "version": "2.0.0",
+        "docs_url": "/docs",
+        "health_url": "/api/health",
+        "dashboard_url": "/api/dashboard",
+    }
