@@ -28,6 +28,11 @@ jobs:
       run: |
         ruff check backend/
         
+    - name: Generate Benchmark Dataset
+      run: |
+        python dataset/generate_dataset.py --rows 5000 --seed 20260902
+        python dataset/validate_dataset.py
+        
     - name: Test Python
       run: |
         PYTHONPATH=$PYTHONPATH:. pytest backend/tests/
@@ -46,8 +51,3 @@ jobs:
       run: |
         cd frontend
         npm run typecheck
-        
-    - name: Validate Dataset Generation
-      run: |
-        python dataset/generate_dataset.py --rows 100 --seed 1234
-        python dataset/validate_dataset.py
